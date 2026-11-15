@@ -1,4 +1,4 @@
-"""Exercise WebKit's pywebview drop bridge against a running packaged server.
+"""Exercise the native pywebview drop bridge against a running packaged server.
 
 Usage: .venv/bin/python scripts/folder-drop-smoke.py http://127.0.0.1:8775
 Use a disposable server catalog. Synthetic drop events and the native path cache
@@ -38,13 +38,25 @@ def drop(window, paths):
       for (const name of {names}) transfer.items.add(new File([''], name));
       document.dispatchEvent(new DragEvent('dragenter', {{bubbles:true, dataTransfer:transfer}}));
       if (document.getElementById('folder-drop').hidden) throw Error('Missing drop target');
-      document.dispatchEvent(new DragEvent('drop', {{bubbles:true, cancelable:true, dataTransfer:transfer}}));
+      // WebView2 rejects synthetic Files at its OS-path extraction API. This
+      // smoke already supplies that path cache above; simulate only that step,
+      // keeping the actual DOM event, serialization and Python bridge intact.
+      const nativeBridge = window.chrome?.webview;
+      const original = nativeBridge?.postMessageWithAdditionalObjects;
+      if(original) nativeBridge.postMessageWithAdditionalObjects = function(message, objects) {{
+        if(message !== 'FilesDropped') return original.call(nativeBridge, message, objects);
+      }};
+      try {{
+        document.dispatchEvent(new DragEvent('drop', {{bubbles:true, cancelable:true, dataTransfer:transfer}}));
+      }} finally {{
+        if(original) nativeBridge.postMessageWithAdditionalObjects = original;
+      }}
     }})()''')
 
 
 outcome = {}
 with tempfile.TemporaryDirectory(prefix='afm-native-drop-') as root:
-    folder = Path(root) / 'Session "quoted" μm'
+    folder = Path(root) / "Session 'quoted' μm"
     folder.mkdir()
     for n in range(1, 4):
         (folder / f'{n:03d}__Z Height_Forward.tiff').write_bytes(
@@ -57,6 +69,7 @@ with tempfile.TemporaryDirectory(prefix='afm-native-drop-') as root:
     def check():
         try:
             wait_for(window, 'window.afmFolderDropReady && !!document.querySelector(".session-heading")')
+            window.evaluate_js('window.__dropErrors=[];window.addEventListener("error",e=>window.__dropErrors.push(e.message))')
             drop(window, [folder])
             wait_for(window, "state.importJob?.status==='completed'")
             job = window.evaluate_js('state.importJob')
@@ -74,11 +87,12 @@ with tempfile.TemporaryDirectory(prefix='afm-native-drop-') as root:
             wait_for(window, 'document.getElementById("toast").textContent.includes("one session folder")')
             window.evaluate_js('openSession(state.importJob.session_id)')
             wait_for(window, 'document.querySelectorAll(".acquisition-card").length===3')
-            outcome.update(passed=True, checks=['WebKit DOM drop bridge', 'hover target',
+            outcome.update(passed=True, os_path_extraction='simulated, not a physical drop', checks=['Native DOM drop bridge', 'hover target',
                 'quoted Unicode folder path', 'background import', 'repeat drop without duplicates',
                 'individual file rejection', 'multiple folder rejection', 'contact sheet'])
         except Exception as exc:
             outcome.update(passed=False, error=str(exc))
+            outcome['diagnostics'] = window.evaluate_js('({platform:pywebview.platform,errors:window.__dropErrors,toast:document.getElementById("toast").textContent,job:state.importJob})')
         finally:
             window.destroy()
 

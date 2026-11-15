@@ -51,6 +51,34 @@ def collect(manifest, cache, source_bundle, licenses, zstd='zstd', download=Fals
         archive=acquire(package,cache,download)
         name=package['name']
         metadata=cache/(name+'-metadata');metadata.mkdir(exist_ok=True)
+        if package.get('format') == 'msys2':
+            unpacked = metadata/'package.tar'
+            decompress_zstd(archive, unpacked, zstd)
+            with tarfile.open(unpacked) as tar:
+                for member in tar:
+                    path = Path(member.name)
+                    if member.isfile() and 'licenses' in path.parts and '..' not in path.parts:
+                        relative = Path(*path.parts[path.parts.index('licenses')+1:])
+                        target = licenses/name/relative
+                        target.parent.mkdir(parents=True, exist_ok=True)
+                        target.write_bytes(tar.extractfile(member).read())
+            for item in package['sources']:
+                source = acquire(item, cache, download)
+                shutil.copy2(source, source_bundle/source.name)
+                unpacked_source = metadata/'source.tar'
+                decompress_zstd(source, unpacked_source, zstd)
+                with tarfile.open(unpacked_source) as tar:
+                    for member in tar:
+                        path = Path(member.name)
+                        if not member.isfile() or '..' in path.parts or path.is_absolute():
+                            continue
+                        if path.name in {'PKGBUILD', '.SRCINFO'} or path.suffix in {'.patch', '.diff'}:
+                            target = source_bundle/'dependency-recipes'/name/path
+                            target.parent.mkdir(parents=True, exist_ok=True)
+                            target.write_bytes(tar.extractfile(member).read())
+                unpacked_source.unlink()
+            unpacked.unlink()
+            continue
         with zipfile.ZipFile(archive) as container:
             member=next(m for m in container.namelist() if m.startswith('info-') and m.endswith('.tar.zst'))
             compressed=metadata/Path(member).name;compressed.write_bytes(container.read(member))

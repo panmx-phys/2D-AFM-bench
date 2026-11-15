@@ -25,6 +25,14 @@ a = Analysis(
     excludes=['PyQt5', 'PyQt6', 'PySide2', 'PySide6', 'matplotlib', 'scipy', 'pandas', 'torch', 'tensorflow', 'IPython', 'pytest'],
     noarchive=False,
 )
+if sys.platform == 'win32':
+    # pywebview ships loaders for three architectures; this candidate is x64.
+    def target_runtime(entry):
+        name = entry[0].replace('\\', '/')
+        return not any('/' + other + '/' in '/' + name
+                       for other in ('win-x86', 'win-arm64'))
+    a.binaries = [entry for entry in a.binaries if target_runtime(entry)]
+    a.datas = [entry for entry in a.datas if target_runtime(entry)]
 # Inspect the resolved collection, including optional packages pulled in by hooks.
 sys.path.insert(0, str(root / 'scripts'))
 from package_notices import collect_notices

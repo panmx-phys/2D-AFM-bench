@@ -27,6 +27,16 @@ Desktop packaging collects original license/notice files for the Python distribu
 
 The executed native Mac build also contains libffi, PCRE2, gettext/libintl and libiconv. Its [pinned dependency manifest](../native/dependencies-macos-arm64.json) and [source collector](../scripts/collect_native_sources.py) preserve original notices, exact source archives, recipes and patches. The local `afm_workbench/_native/licenses` and `sources` outputs accompany packaged binaries. Use the manifests for the binaries actually distributed; the Mac manifest is not a substitute for different Homebrew or Windows dependencies.
 
+The Windows candidate uses the exact MSYS2 UCRT64 packages in
+[dependencies-windows-x64.json](../native/dependencies-windows-x64.json), including
+GLib, libffi, PCRE2, gettext/libintl, libiconv and the MinGW runtime libraries.
+Their complete source packages retain upstream source archives, original
+PKGBUILD recipes and patches. Original binary-package notices accompany the app;
+the complete corresponding sources accompany the release. Python.NET and
+clr-loader supply the Windows .NET bridge; their installed notices and the
+bundled pywebview/WebView2 notices are inventoried during packaging. The host
+Windows and WebView2 runtimes are prerequisites, not bundled operating systems.
+
 Primary technical references:
 
 - [Gwyddion supported formats](https://gwyddion.net/documentation/user-guide-en/file-formats.html)

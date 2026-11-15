@@ -130,7 +130,7 @@ def write_configuration(generated, cc, system):
         invocation = f'{name}(1.0, 2.0)' if name == 'hypot' else f'{name}(1.0)'
         probe = f'#include <math.h>\nint main(void){{volatile double x={invocation};return x==123;}}\n'
         test = subprocess.run([cc, '-std=gnu99', '-Werror=implicit-function-declaration', '-x', 'c', '-', '-lm', '-o', str(generated/'probe')],
-                              input=probe, text=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                              input=probe, text=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=30)
         if test.returncode == 0:
             config.append(f'#define HAVE_{name.upper()} 1')
             gwy.append(f'#define GWY_HAVE_{name.upper()} 1')
@@ -169,6 +169,31 @@ def bundle_macos(output, search_roots):
         run(['codesign', '--force', '--sign', '-', library], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
+def bundle_windows(output, search_roots, objdump='objdump'):
+    """Stage the transitive DLL closure; never resolve libraries from host PATH."""
+    system = Path(os.environ.get('SystemRoot', 'C:/Windows')) / 'System32'
+    queue = list(output.glob('*.dll'))
+    seen = set()
+    while queue:
+        library = queue.pop(0)
+        if library.name.casefold() in seen:
+            continue
+        seen.add(library.name.casefold())
+        headers = subprocess.check_output([str(objdump), '-p', str(library)], text=True)
+        if 'pei-x86-64' not in headers:
+            raise RuntimeError(f'Expected a Windows x64 DLL: {library.name}')
+        for name in re.findall(r'DLL Name:\s*(\S+)', headers):
+            if name.lower().startswith(('api-ms-win-', 'ext-ms-win-')) or (system/name).is_file():
+                continue
+            target = output/name
+            if not target.is_file():
+                original = next((root/name for root in search_roots if (root/name).is_file()), None)
+                if original is None:
+                    raise RuntimeError(f'Unresolved DLL {name} required by {library.name}')
+                shutil.copy2(original, target)
+            queue.append(target)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--source', type=Path, help='Existing pristine Gwyddion 2.71 source tree')
@@ -186,6 +211,7 @@ def main():
     parser.add_argument('--libraries-only', action='store_true', help='Build libraries before the C adapter is available')
     parser.add_argument('--jobs', type=int, default=min(8, os.cpu_count() or 2))
     parser.add_argument('--cc', default=os.environ.get('CC', 'cc'))
+    parser.add_argument('--objdump', default='objdump', help='MinGW PE inspector for Windows DLL staging')
     args = parser.parse_args()
     system = platform.system()
     if system not in {'Darwin', 'Linux', 'Windows'}:
@@ -206,14 +232,23 @@ def main():
     if args.build_fftw:
         fftw, archives['fftw'] = acquire('fftw',cache,args.download)
         args.fftw_prefix=build/'fftw'
-        if not (args.fftw_prefix/'include/fftw3.h').exists():
+        if system == 'Windows':
+            fftw_build = build/'fftw-cmake'
+            run(['cmake', '-S', fftw, '-B', fftw_build, '-G', 'Ninja',
+                 f'-DCMAKE_C_COMPILER={Path(args.cc).resolve().as_posix()}',
+                 f'-DCMAKE_INSTALL_PREFIX={args.fftw_prefix.as_posix()}',
+                 '-DCMAKE_BUILD_TYPE=Release', '-DBUILD_SHARED_LIBS=ON',
+                 '-DBUILD_TESTS=OFF', '-DENABLE_THREADS=OFF', '-DENABLE_OPENMP=OFF'])
+            run(['cmake', '--build', fftw_build, '--parallel', args.jobs])
+            run(['cmake', '--install', fftw_build])
+        elif not (args.fftw_prefix/'include/fftw3.h').exists():
             with (build/'fftw-build.log').open('w') as log:
                 run([fftw/'configure',f'--prefix={args.fftw_prefix}','--enable-shared','--disable-static','--disable-fortran','--disable-doc'],cwd=fftw,stdout=log,stderr=subprocess.STDOUT)
                 run(['make',f'-j{args.jobs}'],cwd=fftw,stdout=log,stderr=subprocess.STDOUT)
                 run(['make','install'],cwd=fftw,stdout=log,stderr=subprocess.STDOUT)
     depflags, deplibs, roots = dependency_flags(args)
     write_configuration(generated,args.cc,system)
-    linematch=(source/'modules/process/linematch.c').read_text()
+    linematch=(source/'modules/process/linematch.c').read_text(encoding='utf-8')
     names=('zero_level_row_shifts','linematch_do_modus','linematch_do_match','row_fit_facet_tilt','untilt_row','linematch_do_facet_tilt')
     funcs=[extract_function(linematch,name) for name in names]
     prototypes='\n'.join(f[:f.index('{')].strip()+';' for f in funcs)
@@ -252,6 +287,8 @@ def main():
         run([args.cc,*cflags,f'-I{ROOT/"native"}','-c',adapter,'-o',obj])
         link('libafm_gwyddion' if system!='Windows' else 'afm_gwyddion',[obj],[*built,*deplibs])
     if system=='Darwin': bundle_macos(output,[output,*roots])
+    elif system=='Windows':
+        bundle_windows(output, [output, *[root.parent/'bin' for root in roots], *roots], args.objdump)
     elif system=='Linux' and args.fftw_prefix:
         # Keep the FFTW SONAME aliases beside the native bridge when FFTW was built locally.
         for path in (args.fftw_prefix.resolve()/'lib').glob('libfftw3.so*'):
@@ -275,7 +312,7 @@ def main():
               'compiler':compiler_version,
               'upstream_sources':SOURCES,'openmp':False,'gtk_runtime':False,'libraries_only':args.libraries_only,
               'configuration':{'config.h':(generated/'config.h').read_text(),'gwyconfig.h':(generated/'gwyconfig.h').read_text()},
-              'upstream_file_sha256':{str(p.relative_to(source)):digest(p) for folder in ('libgwyddion','libprocess') for p in source_files(source,folder)},
+              'upstream_file_sha256':{p.relative_to(source).as_posix():digest(p) for folder in ('libgwyddion','libprocess') for p in source_files(source,folder)},
               'linematch_sha256':hashlib.sha256(linematch.encode()).hexdigest(),
               'binary_sha256':{p.name:digest(p) for p in output.glob('*'+suffix)}}
     (output/'build-manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')

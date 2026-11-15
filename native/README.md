@@ -52,7 +52,7 @@ python scripts/test.py --group native --kind unit
 
 The Linux command is a development/CI recipe; a standalone Linux dependency bundle has not been validated here. Standard system GLib dependencies remain supplied by the host on Linux.
 
-On Windows, use a consistent MinGW-w64 toolchain and matching GLib/FFTW development packages. MSVC and MinGW objects must not be mixed. The script has a DLL build path, but dependency-DLL staging and the Windows application have **not been executed or validated**. Windows packaging should remain a manual gate until a fresh Windows build passes native numerical and desktop checks. Python's existing interpreter does not need to be built with MinGW: the bridge exposes an ordinary C ABI and owns no Python objects.
+On Windows x64, use the [Windows release recipe](../docs/publishing.md#windows-x64-candidate). It extracts a checksum-pinned MSYS2 UCRT64 compiler and GLib packages into the checkout, builds FFTW 3.3.10 with CMake/Ninja, compiles the actual Gwyddion libraries, and stages the transitive DLL dependencies. It uses no system MSYS2 installation. The matching [runtime source manifest](dependencies-windows-x64.json) identifies complete source packages containing original sources, recipes and patches. MSVC and MinGW objects must not be mixed; the Python interpreter can still use MSVC because the bridge exposes an ordinary C ABI and owns no Python objects. See [executed evidence](../docs/validation.md) for the tested host and remaining acceptance limits.
 
 ## Outputs and loading
 

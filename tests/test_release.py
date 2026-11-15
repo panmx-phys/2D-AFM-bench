@@ -6,13 +6,53 @@ from pathlib import Path
 import tarfile
 import tempfile
 import unittest
+import zipfile
 from unittest.mock import patch
 
-from scripts import release_macos, source_release
+from scripts import build_gwyddion, release_macos, release_windows, source_release
 from scripts import test as runner
 
 
 class ReleaseTests(unittest.TestCase):
+    def test_windows_dll_closure_stages_transitive_dependencies_and_rejects_missing(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            bundle, prefix = root/'bundle', root/'prefix'
+            bundle.mkdir(); prefix.mkdir()
+            (bundle/'adapter.dll').write_bytes(b'adapter')
+            (prefix/'dependency.dll').write_bytes(b'dependency')
+            (prefix/'transitive.dll').write_bytes(b'transitive')
+            imports = {'adapter.dll': 'dependency.dll', 'dependency.dll': 'transitive.dll', 'transitive.dll': 'api-ms-win-core-libraryloader-l1-2-0.dll'}
+            def headers(command, **kwargs):
+                return 'file format pei-x86-64\nDLL Name: '+imports[Path(command[-1]).name]
+            with patch.object(build_gwyddion.subprocess, 'check_output', side_effect=headers):
+                build_gwyddion.bundle_windows(bundle, [prefix])
+                self.assertEqual((bundle/'transitive.dll').read_bytes(), b'transitive')
+                imports['transitive.dll'] = 'missing-afm-test-dependency.dll'
+                with self.assertRaisesRegex(RuntimeError, 'Unresolved DLL'):
+                    build_gwyddion.bundle_windows(bundle, [prefix])
+
+    def test_windows_zip_is_deterministic_and_preserves_application_layout(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            app = root/'AFM Workbench'
+            (app/'_internal').mkdir(parents=True)
+            (app/'AFM Workbench.exe').write_bytes(b'exe')
+            dll = app/'_internal/backend.dll'
+            dll.write_bytes(b'dll')
+            a, b = root/'a.zip', root/'b.zip'
+            release_windows.deterministic_zip(a, app, 1234567890)
+            os.utime(dll, (123, 123))
+            release_windows.deterministic_zip(b, app, 1234567890)
+            self.assertEqual(a.read_bytes(), b.read_bytes())
+            with zipfile.ZipFile(a) as archive:
+                self.assertEqual(archive.read('AFM Workbench/_internal/backend.dll'), b'dll')
+
+    def test_windows_cleanup_rejects_source_and_checkout_root(self):
+        for path in (release_windows.ROOT, release_windows.ROOT/'afm_workbench', release_windows.WORK):
+            with self.assertRaisesRegex(RuntimeError, 'Refusing cleanup'):
+                release_windows.remove_generated(path)
+
     def test_tag_version_commit_and_clean_tree_are_required(self):
         release_macos.validate_tag('v1.2.3', '1.2.3', 'abc', 'abc', False)
         for tag, target, dirty in [('v9.9.9', 'abc', False), ('v1.2.3', 'def', False),
@@ -52,7 +92,8 @@ class ReleaseTests(unittest.TestCase):
                 for member in archive:
                     self.assertEqual(member.mtime, 1234567890)
                     self.assertEqual((member.uid, member.gid, member.uname, member.gname), (0, 0, '', ''))
-                self.assertEqual(archive.getmember('Example.app/executable').mode, 0o755)
+                expected_mode = 0o755 if exe.stat().st_mode & 0o111 else 0o644
+                self.assertEqual(archive.getmember('Example.app/executable').mode, expected_mode)
                 self.assertTrue(archive.getmember('Example.app/alias').issym())
                 extracted = root / 'extracted'
                 archive.extractall(extracted, filter='data')

@@ -1,0 +1,76 @@
+name: Windows release candidate
+
+on:
+  push:
+    tags: ['windows-v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: windows-2022
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: '3.12.10'
+          architecture: x64
+      - name: Install hash-locked build and desktop dependencies
+        run: |
+          python -m pip install --require-hashes --only-binary=:all: -r release/windows-bootstrap.lock
+          python -m pip install --require-hashes --no-build-isolation -r release/windows-x64.lock
+      - name: Build and test Windows candidate
+        env:
+          PYTHONUTF8: '1'
+          RELEASE_REF_TYPE: ${{ github.ref_type }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          if ($env:RELEASE_REF_TYPE -eq 'tag') {
+            python scripts/release_windows.py --tag $env:RELEASE_TAG
+          } else {
+            python scripts/release_windows.py
+          }
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-x64-release
+          path: dist/release-windows/
+          if-no-files-found: error
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: windows-x64-test-results
+          path: .test-artifacts/runs/
+          include-hidden-files: true
+  release:
+    needs: build
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/windows-v')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: windows-x64-release
+          path: release
+      - name: Verify and create experimental draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          cd release
+          sha256sum --check SHA256SUMS
+          gh release create "$RELEASE_TAG" --verify-tag --draft --prerelease \
+            --title "AFM Workbench $RELEASE_TAG - Windows x64 candidate" \
+            --notes-file release-notes.md ./*.zip ./*.tar.gz build-manifest.json SHA256SUMS release-notes.md

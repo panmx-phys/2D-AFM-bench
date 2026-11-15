@@ -143,6 +143,49 @@ limitations prominently in the public notes. Keep the default tag workflow's
 draft behavior; publication of this candidate is a deliberate maintainer action.
 This exception does not certify a stable release, Intel Mac or Windows support.
 
+## Windows x64 candidate
+
+Use CPython 3.12 x64 on Windows with Git. Create a virtual environment, then
+install the exact build prerequisites and application dependencies:
+
+```powershell
+py -3.12 -m venv .venv
+.venv\Scripts\python.exe -m pip install --require-hashes -r release/windows-bootstrap.lock
+.venv\Scripts\python.exe -m pip install --require-hashes --no-build-isolation -r release/windows-x64.lock
+.venv\Scripts\python.exe scripts/release_windows.py
+```
+
+Stage new source files before building. The recipe extracts verified MSYS2
+UCRT64 packages into `.test-artifacts/windows/toolchain`, compiles FFTW 3.3.10
+and Gwyddion 2.71, collects the DLL dependency closure and matching sources and
+notices, packages the windowed application, then runs every Python suite and
+the packaged runtime smoke. It does not install MSYS2 or modify system Python.
+The host CPython distribution is recorded, rather than provisioned by the recipe;
+compiler/Python/build-path differences can affect binary bytes.
+
+Outputs are under `dist/release-windows/`: a portable application ZIP, matching
+Windows corresponding-source archive, `build-manifest.json`, `SHA256SUMS` and
+`release-notes.md`. Extract the whole ZIP and keep `_internal` beside the EXE.
+The target is Windows 10/11 x64 with WebView2 Runtime and .NET Framework 4.8.
+No Python, compiler, GLib or FFTW installation is needed by the end user.
+
+`--offline` reuses verified native download caches. The already-installed Python
+environment must match the locks. `--acceptance` runs all active checks against
+the rebuilt executable, including browser and native renderer workflows, and
+needs Playwright and an interactive desktop. `--browser PATH` selects Chromium;
+`AFM_PLAYWRIGHT_MODULE` can select an existing Playwright installation. A native
+renderer smoke uses development pywebview; separately open the packaged EXE to
+verify its desktop startup. Six legacy browser checks remain inactive.
+
+The [Windows workflow](../.github/workflows/release-windows.yml) runs manually for
+artifact-only builds or on `windows-vX.Y.Z` tags. A tagged build requires the tag
+to match the application version, point at HEAD and have a clean checkout. The
+separate Windows tag namespace does not trigger or replace the Mac release.
+Only successful tagged builds create an experimental **draft** release; existing
+assets are never overwritten. Unsigned candidates remain drafts pending clean
+machine installation, physical File Explorer drop testing and signing. Creating
+the workflow is not evidence that GitHub Actions ran it.
+
 ## Other desktop/development builds
 
 Build on the target OS and collect the sources and notices for the exact native
@@ -155,6 +198,6 @@ small GitHub source snapshot above.
 Run the full [release checks](testing.md) against the rebuilt executable and
 check the archive contents, bundled notices and signatures. The local Mac build
 uses an ad-hoc signature; Developer ID signing, notarization and installation on
-a clean Mac remain release gates. Windows native build and packaging remain
-unvalidated. See [validation status](validation.md) for the evidence actually
+a clean Mac remain release gates. Windows candidates remain unsigned until
+Authenticode signing is available. See [validation status](validation.md) for the evidence actually
 recorded, including current browser coverage gaps.

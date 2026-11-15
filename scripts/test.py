@@ -149,13 +149,19 @@ def server(root, run_dir, check_id, bundle=None):
     command = [str(bundle)] if bundle else [sys.executable, '-m', 'afm_workbench']
     with tempfile.TemporaryDirectory(prefix='afm-check-') as workspace:
         log_path = run_dir / (check_id + '-server.log')
+        ready = Path(workspace) / 'server-ready.txt'
         with log_path.open('w') as output:
             process = subprocess.Popen(command + ['--browser', '--demo', '--port', '0',
-                                       '--data-dir', workspace], cwd=root, stdout=output,
+                                       '--data-dir', workspace, '--ready-file', str(ready)], cwd=root, stdout=output,
                                        stderr=subprocess.STDOUT)
             try:
                 deadline = time.monotonic() + 60
                 while time.monotonic() < deadline:
+                    if ready.is_file():
+                        url = ready.read_text(encoding='utf-8')
+                        if re.fullmatch(r'http://127\.0\.0\.1:\d+/', url):
+                            yield url
+                            return
                     log = log_path.read_text(errors='replace')
                     match = re.search(r'AFM Workbench: (http://127\.0\.0\.1:\d+/)', log)
                     if match:

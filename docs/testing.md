@@ -54,7 +54,7 @@ python scripts/build.py
 python scripts/test.py --check canvas --bundle "dist/AFM Workbench.app/Contents/MacOS/AFM Workbench"
 ```
 
-On Windows, the expected executable path is `dist/AFM Workbench/AFM Workbench.exe`; Windows native build and packaging remain unvalidated. `--bundle` must name the executable, not an `.app` directory. It adds `runtime` automatically, unless a `--kind` filter explicitly defers it. Unit tests always run against source; the report records that distinction. The runner does not rebuild or establish bundle freshness itself.
+On Windows, the executable path is `dist/AFM Workbench/AFM Workbench.exe`; see the [Windows validation record](validation.md). `--bundle` must name the executable, not an `.app` directory. It adds `runtime` automatically, unless a `--kind` filter explicitly defers it. The runner uses a disposable readiness file so Windows windowed executables need no console output. Unit tests always run against source; the report records that distinction. The runner does not rebuild or establish bundle freshness itself.
 
 Each smoke starts a separate server with a fresh temporary catalog, synthetic demo and OS-assigned loopback port, then stops the process and removes the catalog. There is no URL option on the runner, so it never targets an existing lab catalog. Server logs are retained. Individual scripts still accept a URL for manual diagnosis; use a disposable catalog. Native smoke windows are driven by development pywebview even when their HTTP service/assets come from the bundle; this is not a test of the packaged desktop window startup.
 

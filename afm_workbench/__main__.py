@@ -82,6 +82,7 @@ def main(argv=None):
     parser.add_argument('--port', type=int, default=0, help='Loopback port (default: random available port)')
     parser.add_argument('--mcp', action='store_true', help='Run the shared service as an MCP stdio server')
     parser.add_argument('--debug', action='store_true', help='Open desktop developer tools')
+    parser.add_argument('--ready-file', type=Path, help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
     from .service import Workbench
     workbench = Workbench(args.data_dir.expanduser().resolve())
@@ -96,6 +97,9 @@ def main(argv=None):
     from .server import create_server
     server = create_server(workbench, port=args.port)
     if args.browser:
+        # Windowed Windows executables have no stdout, even with redirected pipes.
+        if args.ready_file:
+            args.ready_file.write_text(server.url, encoding='utf-8')
         print(f'AFM Workbench: {server.url}', flush=True)
         print(f'Local workspace: {args.data_dir.resolve()}', flush=True)
         try:

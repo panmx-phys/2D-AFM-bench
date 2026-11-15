@@ -1,0 +1,3 @@
+# These upstream notice bytes are checksum-verified during packaging.
+# Preserve their original line endings even with core.autocrlf on Windows.
+licenses/python-fallbacks/* -text

@@ -12,9 +12,11 @@ A local desktop application for browsing, processing and measuring atomic force 
 
 ## Download
 
-Download the Apple Silicon Mac binary from [GitHub Releases](https://github.com/panmx-phys/2D-AFM-bench/releases). Version 0.1.0 is an experimental prerelease for macOS 14 or newer, with an ad-hoc signature and no Apple notarization. Clean-Mac installation is not yet validated; macOS may block opening it. Intel Mac and Windows binaries are not available.
+Download the Apple Silicon Mac binary from [GitHub Releases](https://github.com/panmx-phys/2D-AFM-bench/releases). Version 0.1.0 is an experimental prerelease for macOS 14 or newer, with an ad-hoc signature and no Apple notarization. Clean-Mac installation is not yet validated; macOS may block opening it. Intel Mac binaries are not available.
 
 Extract the `macos-arm64.tar.gz` archive and open **AFM Workbench.app**. The matching source archive, build manifest and checksums accompany the binary. See the release notes for executed checks and remaining limitations.
+
+A Windows x64 candidate can be built with the [Windows release recipe](docs/publishing.md#windows-x64-candidate). Extract its entire `windows-x64.zip` and open **AFM Workbench/AFM Workbench.exe**, keeping `_internal` beside it. It includes Python and the native scientific libraries; Windows 10/11 x64, Microsoft Edge WebView2 Runtime and .NET Framework 4.8 are required. The candidate is unsigned, and clean-machine installation remains an acceptance gate. See [validation](docs/validation.md) for the checks actually executed.
 
 ## Run from source
 
@@ -43,7 +45,7 @@ brew install glib fftw pkg-config
 python scripts/build_gwyddion.py --download
 ```
 
-See [native build instructions](native/README.md) for Linux, explicit dependency locations and the source bundle. Native execution has been tested on macOS arm64. Windows remains a platform target; its native backend build and packaging have not been validated. There is no silent Python fallback if the native library is missing.
+See [native build instructions](native/README.md) for Linux, explicit dependency locations and the source bundle. The Windows recipe supplies a consistent compiler and native dependencies inside the checkout. There is no silent Python fallback if the native library is missing.
 
 Then install and open:
 
@@ -180,7 +182,7 @@ python scripts/test.py --check runtime --bundle "dist/AFM Workbench.app/Contents
 
 Build the native backend and collect the corresponding sources/notices for its actual dependencies first; see [native instructions](native/README.md). Stage or commit release source before running `scripts/build.py`: it packages tracked Workbench files and the native source collection into `dist/AFM-Workbench-source.tar.gz` alongside the application. It refuses an incomplete or mismatched source collection. No experimental data enters this archive.
 
-Build separately on each target OS. On macOS the application is `dist/AFM Workbench.app`. Windows native packaging remains unvalidated. CI builds on Mac and Linux, runs affected Python checks on pull requests and full Python checks on pushes/manual runs. Desktop renderer and packaging checks remain local; see [validation status](docs/validation.md) for executed evidence. Public release still needs signing/notarization and platform acceptance testing.
+Build separately on each target OS. On macOS the application is `dist/AFM Workbench.app`; on Windows it is `dist/AFM Workbench/AFM Workbench.exe`. CI builds on Mac and Linux, runs affected Python checks on pull requests and full Python checks on pushes/manual runs. The separate Windows candidate workflow builds its pinned native dependencies and checks the packaged runtime. Desktop renderer and packaging acceptance remain local; see [validation status](docs/validation.md) for executed evidence. Stable public releases still need platform signing and acceptance testing.
 
 For a pinned Apple Silicon Mac candidate, run `python scripts/release_macos.py` (Python 3.12+ bootstrap and Apple Command Line Tools). It provisions an exact portable interpreter and hash-locked dependencies, rebuilds, runs all Python tests and the packaged runtime smoke, and creates application/source archives plus checksums under `dist/release/`. Pushing a matching `vX.Y.Z` tag runs the same recipe in GitHub Actions and creates a **draft** release. See [publishing](docs/publishing.md#reproducible-apple-silicon-mac-candidate) for clean-tag requirements, offline replay, reproducibility limits and signing/acceptance gates.
 

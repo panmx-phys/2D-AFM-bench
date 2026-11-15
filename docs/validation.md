@@ -2,6 +2,36 @@
 
 Use the [test catalog and focused workflow](testing.md) to choose current checks. The dated records below are historical evidence, not a requirement to rerun every check after each edit. Six preview-era browser scripts are cataloged as legacy; their older passes do not describe the current direct-save interface.
 
+## Windows x64 candidate, 2026-11-14
+
+Executed on Windows 11 x64 with CPython 3.12.14. The new
+[Windows recipe](publishing.md#windows-x64-candidate) uses pinned MSYS2 UCRT64
+packages, compiles the actual Gwyddion 2.71 libraries and FFTW 3.3.10, and
+packages Python and the native DLL closure in a portable ZIP.
+
+- All 156 Python tests passed. The packaged runtime, sample map, folder
+  management, canvas, fluidity, processing latency and folder-drop checks passed.
+  These are synthetic regression checks, not validation of every AFM format or
+  experimental dataset. Six legacy browser checks remain inactive.
+- Initial Windows runs exposed two POSIX-only test assumptions: double quotes in
+  directory names and executable permission bits. Portable fixtures preserve
+  quote/Unicode serialization coverage; archive-mode assertions follow the
+  filesystem's actual executable bits.
+- WebView2 rejects synthetic JavaScript `File` objects at its disk-path extraction
+  API. The drop smoke simulates that one OS extraction step and seeds pywebview's
+  path cache, while retaining the actual DOM event/serialization/Python bridge,
+  background import, duplicate/file/multiple-folder rejection and contact-sheet
+  assertions. It does not verify a physical File Explorer drop.
+- Packaging preserves original checksum-verified license bytes despite Git's
+  Windows line-ending conversion. Source manifests use portable slash-separated
+  paths. Only the x64 WebView2 loader is included, and PE inspection rejects
+  unexpected native architectures and unresolved scientific DLL imports.
+- Native renderer smokes use development pywebview against the packaged service.
+  Separate visual inspection of the packaged desktop startup remains deferred.
+  Clean-machine installation, physical
+  folder drops and Authenticode signing remain acceptance gates; this is an
+  unsigned candidate, not a stable Windows release.
+
 ## CI plane-fit tolerance correction, 2026-11-14
 
 The [first CI run after the release-tooling push](https://github.com/panmx-phys/2D-AFM-bench/actions/runs/43659762912) passed all Python checks on Ubuntu. macOS passed 152 of 153 tests; the legacy plane's mathematically zero residual reached `1.2079226507921703e-13`, exceeding the test's fixed `1e-13` absolute tolerance. The synthetic input's maximum magnitude was 48, so this is a relative residual of approximately `2.52e-15`.
