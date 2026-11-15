@@ -24,16 +24,24 @@ class GwyddionProcessingTests(unittest.TestCase):
 
     def test_plane_uses_gwyddion_pivot_without_zeroing_fitted_intercept(self):
         y, x = np.mgrid[:7, :10]
-        data = 30 + 2*x - 3*y
-        original = data.copy()
-        result, history = apply_recipe(data, [{'type': 'plane', 'method': 'gwyddion'}])
-        np.testing.assert_allclose(result, 30 + 2*10/2 - 3*7/2, atol=1e-13)
-        np.testing.assert_array_equal(data, original)
-        self.assertEqual(history[0]['algorithm_version'], '3.0.0')
-        # Historic recipes keep their old zero-reference behavior.
-        legacy, old_history = apply_recipe(data, [{'type': 'plane'}])
-        np.testing.assert_allclose(legacy, 0, atol=1e-13)
-        self.assertEqual(old_history[0]['algorithm_version'], '1.0.0')
+        for scale in (1e-9, 1., 1e3):
+            with self.subTest(scale=scale):
+                data = (30 + 2*x - 3*y) * scale
+                original = data.copy()
+                # LAPACK implementations can leave different roundoff after
+                # fitting and subtracting this plane. Budget against the input
+                # magnitude; a fixed absolute tolerance is inappropriate for
+                # both SI-scale and larger values when the expected result is 0.
+                roundoff = 32 * np.finfo(np.float64).eps * np.max(np.abs(data))
+                result, history = apply_recipe(data, [{'type': 'plane', 'method': 'gwyddion'}])
+                expected_pivot = (30 + 2*10/2 - 3*7/2) * scale
+                np.testing.assert_allclose(result, expected_pivot, rtol=0, atol=roundoff)
+                self.assertEqual(history[0]['algorithm_version'], '3.0.0')
+                # Historic recipes keep their old zero-reference behavior.
+                legacy, old_history = apply_recipe(data, [{'type': 'plane'}])
+                np.testing.assert_allclose(legacy, 0, rtol=0, atol=roundoff)
+                self.assertEqual(old_history[0]['algorithm_version'], '1.0.0')
+                np.testing.assert_array_equal(data, original)
 
     def test_polynomial_degrees_are_distinct_and_background_reconstructs(self):
         y, x = np.mgrid[:15, :19]

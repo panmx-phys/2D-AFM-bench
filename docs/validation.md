@@ -2,6 +2,12 @@
 
 Use the [test catalog and focused workflow](testing.md) to choose current checks. The dated records below are historical evidence, not a requirement to rerun every check after each edit. Six preview-era browser scripts are cataloged as legacy; their older passes do not describe the current direct-save interface.
 
+## CI plane-fit tolerance correction, 2026-11-14
+
+The [first CI run after the release-tooling push](https://github.com/panmx-phys/2D-AFM-bench/actions/runs/43659762912) passed all Python checks on Ubuntu. macOS passed 152 of 153 tests; the legacy plane's mathematically zero residual reached `1.2079226507921703e-13`, exceeding the test's fixed `1e-13` absolute tolerance. The synthetic input's maximum magnitude was 48, so this is a relative residual of approximately `2.52e-15`.
+
+Only the test was changed. It now uses a roundoff budget of `32 × float64 epsilon × max(abs(input))`, sets relative tolerance explicitly to zero for both methods, and checks scales `1e-9`, `1` and `1e3`. This retains the distinction between Gwyddion's nonzero pivot and legacy zero-reference behavior, keeps algorithm-version assertions, and checks original immutability after both calls. The focused eight-test Gwyddion-processing suite passed locally. Production algorithms and numerical outputs were not modified; the remote rerun is the platform-specific acceptance check.
+
 ## Reproducible Mac release recipe, 2026-11-14
 
 Implemented the [pinned Apple Silicon recipe and tag-triggered draft workflow](publishing.md#reproducible-apple-silicon-mac-candidate). Executed on the local macOS arm64 host; this does not establish clean-machine or macOS 14 acceptance.
