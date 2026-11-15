@@ -170,6 +170,11 @@ support files are needed. Its embedded runtime expands to user TEMP at startup.
 The catalog defaults to `%LOCALAPPDATA%/AFM Workbench`; use `--data-dir PATH`
 to select another workspace. The release inspection reads the embedded archive
 and verifies the bootloader and payload PE architectures and native DLL closure.
+Every Windows `scripts/build.py` invocation also performs this inspection. Keep
+all three vendor WebView2 loader directories: pywebview resolves `win-arm64`,
+`win-x64` and `win-x86` at startup even on x64. Only those exact loader DLLs are
+allowed to use their respective architectures; the app and scientific DLLs must
+remain x64. This layout does not establish ARM64 or 32-bit Windows support.
 The target is Windows 10/11 x64 with WebView2 Runtime and .NET Framework 4.8.
 No Python, compiler, GLib or FFTW installation is needed by the end user.
 

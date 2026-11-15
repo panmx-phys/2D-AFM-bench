@@ -33,6 +33,12 @@ TOOLCHAIN = ROOT/'release/windows-x64-toolchain.json'
 NATIVE = ROOT/'native/dependencies-windows-x64.json'
 LOCK = ROOT/'release/windows-x64.lock'
 BUNDLE = ROOT/'dist/AFM Workbench.exe'
+# pywebview resolves all three runtime directories on every WebView2 startup.
+# These exact vendor files are the only native exceptions to the x64 target.
+WEBVIEW_LOADERS = {
+    f'webview/lib/runtimes/{runtime}/native/WebView2Loader.dll': machine
+    for runtime, machine in [('win-arm64', 0xAA64), ('win-x64', 0x8664), ('win-x86', 0x014C)]
+}
 
 
 def output(*args):
@@ -98,6 +104,9 @@ def inspect_bundle(executable):
     native = 'afm_workbench/_native/'
     if native+'afm_gwyddion.dll' not in binaries:
         raise RuntimeError('Missing packaged scientific backend.')
+    missing = WEBVIEW_LOADERS.keys() - binaries.keys()
+    if missing:
+        raise RuntimeError('Missing pywebview startup loader(s): ' + ', '.join(sorted(missing)))
     records = {}
     for name, archived_name in [(executable.name, None), *binaries.items()]:
         pe = (pefile.PE(str(executable), fast_load=True) if archived_name is None
@@ -105,7 +114,11 @@ def inspect_bundle(executable):
         try:
             # .NET AnyCPU assemblies can have an I386 header; native code must be x64.
             managed = bool(pe.OPTIONAL_HEADER.DATA_DIRECTORY[14].VirtualAddress)
-            if not managed and pe.FILE_HEADER.Machine != 0x8664:
+            expected = WEBVIEW_LOADERS.get(name, 0x8664)
+            if name in WEBVIEW_LOADERS:
+                if managed or pe.FILE_HEADER.Machine != expected:
+                    raise RuntimeError(f'Incorrect WebView2 loader architecture: {name}')
+            elif not managed and pe.FILE_HEADER.Machine != expected:
                 raise RuntimeError(f'Non-x64 native binary: {name}')
             pe.parse_data_directories(directories=[1, 13])
             dependencies = [entry.dll.decode() for attr in ('DIRECTORY_ENTRY_IMPORT', 'DIRECTORY_ENTRY_DELAY_IMPORT')
@@ -118,6 +131,7 @@ def inspect_bundle(executable):
         finally:
             pe.close()
     return {'format': 'single portable executable', 'pe_files': len(binaries)+1,
+            'webview_loaders': sorted(WEBVIEW_LOADERS),
             'native_dll_imports': records}
 
 

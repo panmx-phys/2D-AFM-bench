@@ -17,6 +17,10 @@ os.environ.setdefault('SOURCE_DATE_EPOCH', subprocess.check_output(
 # not been collected for this build's dependency manifest.
 create_source_release(root / 'dist' / 'AFM-Workbench-source.tar.gz')
 subprocess.run([sys.executable, '-m', 'PyInstaller', '--clean', '--noconfirm', str(root / 'AFM-Workbench.spec')], cwd=root, check=True)
+if sys.platform == 'win32':
+    from release_windows import inspect_bundle
+    inspection = inspect_bundle(root / 'dist' / 'AFM Workbench.exe')
+    print(f'Windows payload verified: {inspection["pe_files"]} PE files, all three WebView2 loaders.')
 if sys.platform == 'darwin':
     app = root / 'dist' / 'AFM Workbench.app'
     # Finder/file-provider metadata on generated files can prevent codesigning.

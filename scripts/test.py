@@ -144,10 +144,28 @@ def print_plan(catalog, reasons, kinds=()):
 
 
 @contextmanager
+def temporary_workspace():
+    """Allow Windows a bounded interval to release a terminated bundle's DLLs."""
+    workspace = tempfile.TemporaryDirectory(prefix='afm-check-')
+    try:
+        yield workspace.name
+    finally:
+        attempts = 50 if sys.platform == 'win32' else 1
+        for attempt in range(attempts):
+            try:
+                workspace.cleanup()
+                break
+            except PermissionError:
+                if attempt == attempts - 1:
+                    raise
+                time.sleep(.1)
+
+
+@contextmanager
 def server(root, run_dir, check_id, bundle=None):
     """Each smoke gets a fresh synthetic catalog, a random loopback port and guaranteed cleanup."""
     command = [str(bundle)] if bundle else [sys.executable, '-m', 'afm_workbench']
-    with tempfile.TemporaryDirectory(prefix='afm-check-') as workspace:
+    with temporary_workspace() as workspace:
         log_path = run_dir / (check_id + '-server.log')
         ready = Path(workspace) / 'server-ready.txt'
         # Keep one-file extraction inside this disposable workspace. Its parent
@@ -219,6 +237,7 @@ def run_check(check, args, run_dir):
                     record['status'] = 'passed' if result.returncode == 0 else 'failed'
                     record['exit_code'] = result.returncode
         except Exception as exc:
+            record['status'] = 'failed'
             record['error'] = str(exc)
             traceback.print_exc()
         finally:

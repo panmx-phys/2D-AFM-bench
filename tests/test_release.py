@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import tarfile
 import tempfile
+from types import SimpleNamespace
 import unittest
 from contextlib import ExitStack
 from unittest.mock import patch
@@ -14,6 +15,46 @@ from scripts import test as runner
 
 
 class ReleaseTests(unittest.TestCase):
+    def inspect_windows_payload(self, payload):
+        """Supply PE headers/archive entries without requiring Windows or PyInstaller."""
+        def pe_header(filename=None, data=None, fast_load=True):
+            machine, managed = (0x8664, False) if data is None else data
+            directories = [SimpleNamespace(VirtualAddress=0) for _ in range(15)]
+            directories[14].VirtualAddress = int(managed)
+            return SimpleNamespace(FILE_HEADER=SimpleNamespace(Machine=machine),
+                                   OPTIONAL_HEADER=SimpleNamespace(DATA_DIRECTORY=directories),
+                                   parse_data_directories=lambda **kwargs: None, close=lambda: None)
+        archive = SimpleNamespace(toc=payload, extract=payload.__getitem__)
+        modules = {'pefile': SimpleNamespace(PE=pe_header),
+                   'PyInstaller.archive.readers': SimpleNamespace(CArchiveReader=lambda _: archive)}
+        with patch.dict('sys.modules', modules), patch.dict(os.environ, SystemRoot=str(Path.cwd())):
+            return release_windows.inspect_bundle(Path('Workbench.exe'))
+
+    def windows_payload(self):
+        return {'afm_workbench\\_native\\afm_gwyddion.dll': (0x8664, False),
+                'python312.dll': (0x8664, False),
+                'webview/lib/Microsoft.Web.WebView2.Core.dll': (0x014C, True),
+                **{path: (machine, False) for path, machine in release_windows.WEBVIEW_LOADERS.items()}}
+
+    def test_windows_payload_requires_all_pywebview_startup_loaders(self):
+        payload = self.windows_payload()
+        report = self.inspect_windows_payload(payload)
+        self.assertEqual(report['webview_loaders'], sorted(release_windows.WEBVIEW_LOADERS))
+        self.assertEqual(report['pe_files'], len(payload) + 1)
+        for path in release_windows.WEBVIEW_LOADERS:
+            with self.subTest(missing=path), self.assertRaisesRegex(RuntimeError, 'Missing pywebview startup loader'):
+                self.inspect_windows_payload({key: value for key, value in payload.items() if key != path})
+
+    def test_windows_loader_exceptions_require_exact_path_and_native_architecture(self):
+        for path, machine in release_windows.WEBVIEW_LOADERS.items():
+            for header in [(0x8664 if machine != 0x8664 else 0xAA64, False), (machine, True)]:
+                with self.subTest(path=path, header=header), self.assertRaisesRegex(RuntimeError, 'Incorrect WebView2 loader architecture'):
+                    self.inspect_windows_payload({**self.windows_payload(), path: header})
+        for path in ['WebView2Loader.dll', 'other/win-arm64/native/WebView2Loader.dll',
+                     'afm_workbench/_native/foreign.dll', 'python312.dll']:
+            with self.subTest(path=path), self.assertRaisesRegex(RuntimeError, 'Non-x64 native binary'):
+                self.inspect_windows_payload({**self.windows_payload(), path: (0xAA64, False)})
+
     def test_windows_dll_closure_stages_transitive_dependencies_and_rejects_missing(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
@@ -137,7 +178,7 @@ class ReleaseTests(unittest.TestCase):
                 if line and not line.startswith('#'):
                     self.assertRegex(line, r'^[\w-]+==[\w.]+ --hash=sha256:[0-9a-f]{64}$')
         config = json.loads(release_macos.CONFIG.read_text())
-        workflow = (release_macos.ROOT / '.github/workflows/release.yml').read_text()
+        workflow = (release_macos.ROOT / '.github/workflows/release.yml').read_text(encoding='utf-8')
         self.assertIn('runs-on: ' + config['runner'], workflow)
         self.assertIn("python-version: '" + config['bootstrap_python'] + "'", workflow)
 

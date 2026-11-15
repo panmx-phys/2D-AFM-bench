@@ -2,6 +2,35 @@
 
 Use the [test catalog and focused workflow](testing.md) to choose current checks. The dated records below are historical evidence, not a requirement to rerun every check after each edit. Six preview-era browser scripts are cataloged as legacy; their older passes do not describe the current direct-save interface.
 
+## Windows packaged desktop startup repair, 2026-11-15
+
+The x64 executable failed with `Cannot find win-arm64`: the packaging filter
+removed two WebView2 loader directories that pywebview 6.2.1 resolves on every
+desktop startup. Preserve the upstream loader layout for all three architectures;
+the application and scientific runtime remain x64. Every Windows build now
+inspects the actual executable for all three loaders and validates their exact
+paths and PE architectures. The new inspection rejected the previous executable
+for its missing ARM64 and x86 loaders.
+
+The rebuilt portable executable passed payload inspection (123 PE files), and
+its native WebView2 window opened and rendered the empty library on this Windows
+11 x64 host. Packaging, release and test-runner regressions and the packaged
+runtime smoke passed. The runtime smoke uses synthetic data and checks assets,
+HTTP authentication, native plane correction, saved recipe replay, immutable
+raw pixels and undo. It does not establish clean-machine compatibility.
+
+Verification also exposed a Windows DLL-release race during temporary workspace
+cleanup and a runner error that could report a passed smoke despite failed
+cleanup. Cleanup now retries permission errors for a bounded interval, and any
+remaining cleanup exception makes the check fail. Regression tests cover both
+transient and persistent locks and a successful smoke followed by cleanup failure.
+The final runtime check completed without a cleanup exception. A release test
+also now reads its UTF-8 workflow explicitly, avoiding the host GBK default.
+
+These focused checks do not replace full release acceptance. Six legacy browser
+scripts remain inactive; clean-machine startup, signing and physical File Explorer
+folder drops remain unverified. No Mac rebuild or ARM64 Windows support is claimed.
+
 ## Windows x64 candidate, 2026-11-14
 
 Executed on Windows 11 x64 with CPython 3.12.14. The new

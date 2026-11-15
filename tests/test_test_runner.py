@@ -112,6 +112,24 @@ class TestSelectionTests(unittest.TestCase):
 
 
 class RunnerOutcomeTests(unittest.TestCase):
+    def test_windows_workspace_cleanup_retries_locks_but_reports_persistent_failure(self):
+        with patch.object(runner.sys, 'platform', 'win32'), \
+                patch.object(runner.tempfile, 'TemporaryDirectory') as temporary, \
+                patch.object(runner.time, 'sleep') as pause:
+            workspace = temporary.return_value
+            workspace.name = 'test-workspace'
+            workspace.cleanup.side_effect = [PermissionError('DLL locked'), None]
+            with runner.temporary_workspace() as name:
+                self.assertEqual(name, workspace.name)
+            self.assertEqual(workspace.cleanup.call_count, 2)
+            pause.assert_called_once_with(.1)
+            workspace.cleanup.reset_mock()
+            workspace.cleanup.side_effect = PermissionError('still locked')
+            with self.assertRaisesRegex(PermissionError, 'still locked'):
+                with runner.temporary_workspace():
+                    pass
+            self.assertEqual(workspace.cleanup.call_count, 50)
+
     def test_windows_server_stops_child_tree_and_preserves_smoke_failure(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
@@ -138,9 +156,12 @@ class RunnerOutcomeTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
             args = argparse.Namespace(bundle=None, node='node', browser=None, timeout=1)
+            cleanup_error = patches.pop('cleanup_error', None)
             @contextmanager
             def fake_server(*args):
                 yield 'http://127.0.0.1:1/'
+                if cleanup_error:
+                    raise cleanup_error
             with patch.object(runner, 'ROOT', root), patch.object(runner, 'server', fake_server), \
                     redirect_stdout(io.StringIO()):
                 if check['kind'] == 'unit':
@@ -154,6 +175,14 @@ class RunnerOutcomeTests(unittest.TestCase):
                                   return_value=subprocess.CompletedProcess([], 7))
         self.assertEqual(result['status'], 'failed')
         self.assertEqual(result['exit_code'], 7)
+
+    def test_cleanup_failure_overrides_successful_smoke_exit(self):
+        result = self.run_example(dict(id='example', kind='runtime', path='example.py'),
+                                  return_value=subprocess.CompletedProcess([], 0),
+                                  cleanup_error=PermissionError('DLL locked'))
+        self.assertEqual(result['exit_code'], 0)
+        self.assertEqual(result['status'], 'failed')
+        self.assertEqual(result['error'], 'DLL locked')
 
     def test_missing_dependency_and_timeout_are_failures(self):
         for error in (FileNotFoundError('node'), subprocess.TimeoutExpired(['node'], 1)):
