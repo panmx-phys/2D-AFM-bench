@@ -10,7 +10,13 @@ A local desktop application for browsing, processing and measuring atomic force 
 - Immutable managed originals, source checksums, saved recipes, session notes, CSV, PNG figures and JSON provenance exports.
 - The same local Python service exposed through the GUI and a small MCP stdio adapter. No account, cloud or model required.
 
-## Run
+## Download
+
+Download the Apple Silicon Mac binary from [GitHub Releases](https://github.com/panmx-phys/2D-AFM-bench/releases). Version 0.1.0 is an experimental prerelease for macOS 14 or newer, with an ad-hoc signature and no Apple notarization. Clean-Mac installation is not yet validated; macOS may block opening it. Intel Mac and Windows binaries are not available.
+
+Extract the `macos-arm64.tar.gz` archive and open **AFM Workbench.app**. The matching source archive, build manifest and checksums accompany the binary. See the release notes for executed checks and remaining limitations.
+
+## Run from source
 
 Python 3.10 or newer is required. Python 3.12 is the reference development environment.
 

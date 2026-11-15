@@ -27,7 +27,7 @@ Keep `.gitignore`; do not add experimental TIFFs, local catalogs, environments,
 test artifacts or generated native binaries. The committed reference fixture
 contains generated synthetic results.
 
-From the exported checkout, follow [installation](../README.md#run), audit the
+From the exported checkout, follow [installation](../README.md#run-from-source), audit the
 [test catalog](testing.md), build the native backend, and run the full checks.
 CI runs the Python checks on Mac and Linux; browser and desktop checks require
 their separately documented dependencies. Preserve failed, skipped and legacy
@@ -132,6 +132,16 @@ its executable, packaged desktop startup, clean-Mac installation, Developer ID
 signing and notarization are complete. The workflow does not publish an unsigned
 candidate as a finished release or provide Intel Mac/universal2/Windows binaries.
 Adding the workflow does not imply that a tag was pushed or a GitHub run executed.
+
+## Authorized experimental prerelease
+
+On 2026-11-14 the user explicitly requested publication of the binary. Version
+0.1.0 may therefore be published as an **experimental prerelease** before
+Developer ID signing, notarization and clean-Mac installation acceptance.
+Run all active checks against the rebuilt executable and record the remaining
+limitations prominently in the public notes. Keep the default tag workflow's
+draft behavior; publication of this candidate is a deliberate maintainer action.
+This exception does not certify a stable release, Intel Mac or Windows support.
 
 ## Other desktop/development builds
 

@@ -1,6 +1,6 @@
 # AFM Workbench Project Instructions
 
-Start at `index.md`, then read the relevant parts of `design.md`.
+Start at `README.md`, then read the relevant parts of `design.md`.
 
 The user authorized implementation and independent product decisions on 2026-11-09. Build an intuitive product for a busy PI browsing and analyzing data. The confirmed platform target is Mac and Windows desktop, with a shared database later. The software is intended for a standalone public GitHub repository.
 
