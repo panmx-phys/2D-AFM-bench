@@ -1,9 +1,9 @@
 # AFM Workbench
 
-A local desktop workbench for browsing AFM sessions and following interesting images into reproducible analysis. **One folder is one session.** Every channel and forward/backward image stays together.
+A local desktop application for browsing, processing and measuring atomic force microscopy (AFM) data. **One folder is one session.** Every channel and forward/backward image stays together.
 
 - A compact contact sheet centered on one forward Z-height image per acquisition, with matching error and other signals beside it. All channels and directions remain available through the channel selector.
-- A sample map at recorded positions and physical sizes, with focus, image and outline views. Overlap selection reaches every acquisition and its channels.
+- A sample map at recorded positions and physical sizes, with focus, image and outline views. Select overlapping scans individually to inspect their channels.
 - Side-by-side comparison of up to four images, with an optional shared display range for matching units.
 - Gwyddion C plane/polynomial leveling, eight row/column alignment methods, and zero references, saved when applied and undoable step by step.
 - Full-resolution profiles with width averaging, selected-area statistics and two-region mean step-height measurements.
@@ -79,16 +79,31 @@ Open **Folders** in the sidebar, or **Manage folder** above a session. Rename se
 
 If a folder is unavailable, use **Manage → Reconnect** and choose its new location. The session keeps its ID, notes and analysis; previous folder locations are recorded, and newly imported images record their source paths. Import progress is kept for the current application process; after a restart, update again to resume from the saved files.
 
-## A PI's quick pass
+## Quick start
 
 1. Open a session and scan the contact sheet. Each acquisition starts with one forward Z-height image and signals from the same direction and recorded footprint. If forward height is absent, the fallback is labeled. Choose **All channels** or expand an acquisition's channel list to reach every image in the folder. **Leveled thumbnails** (on by default) applies display-only scan-line and plane leveling to unprocessed height thumbnails so features are visible at a glance; card statistics remain those of the stored data and are marked *unleveled*. Turn it off to see the stored data.
 2. Choose **Sample map** to see acquisition locations. **Focus** shows the selected image with all footprints outlined. Click an overlapping area to choose from every scan covering that point, or select any acquisition in the list. **All images** brings the selected scan to the front; **Outlines** shows coverage alone. Only the selected scan is labeled on the map. Choose **Open channels** to open its channel and direction. Recorded positions stay fixed; images are not interpolated across gaps.
 3. Star images worth returning to. Select two to four card checkboxes and choose **Compare images**.
 4. Open an image. Switch between height and its signals in the header's channel menu, and between forward and backward with the header button or **B**. Arrow keys move through the same channel and direction across acquisitions in the height overview, or through all images in the other views. Press **S** to star.
-5. Opening an unprocessed Z-height image automatically applies and saves scan-line alignment, three-point leveling on one inferred plane, and outline contrast. A message offers **Undo**; inspect the three numbered points and compare **Original** and **Result**. Every correction is saved to the image's recipe as soon as you apply it, and **⌘/Ctrl Z** or Record's undo removes the last one; the original file is never changed. Drag a **Contrast** rectangle (shortcut **C**) over a terrace or particle to set its display range immediately. **Prepare** opens with **Scan lines**: choose **Rows** or **Columns** (the file's axis is marked) and click a method to apply it. Each click replaces the previous scan-line correction rather than stacking; **Off** removes it, and **Terrace** restores Auto level's terrace-aware correction. A chosen method runs before Auto level's plane fit; if that fit then fails, Auto level is removed and the notice asks for three points (undo restores it). **Level surface** follows with **Auto level**, **3-point level** and the reference region; plane, polynomial, terrace, zero-reference and scan-axis controls sit under **More corrections**, and the mask below. ⌘/Ctrl Z steps back to the previous recipe. If automatic reference selection fails, the notice offers **Choose 3 leveling points**; click three clean, well-spaced points on the same plane. The **Auto level new height images when opened** preference at the bottom of Prepare can be turned off; with it on, browsing into an unprocessed height image saves that recipe. Images that already have a recipe are never automatically extended. Measure offers line profiles, two-region step heights and area roughness. Record holds correction history, undo and acquisition provenance. The export button remains above the image.
-6. Use **Notes** for session notes and **Details** for source-folder and import metadata. Mark images reviewed and export calibrated data with its provenance manifest. “Reviewed” is a workflow label, not a scientific validation claim.
+5. Inspect the automatic correction. Opening an unprocessed Z-height image applies and saves scan-line alignment, three-point leveling on an inferred plane, and outline contrast by default. Check the three reference points and compare **Original** with **Result**. Use **⌘/Ctrl Z** to undo; original files remain unchanged. See [Processing controls](#processing-controls) for manual corrections and the option to turn automatic processing off.
+6. Drag a **Contrast** rectangle (**C**) over a terrace or particle to adjust its display range. Use **Measure** for line profiles, two-region step heights and area roughness. Contrast changes do not change numerical measurements.
+7. Use **Notes** for session notes and **Details** for source-folder and import metadata. Mark images reviewed and export calibrated data with its provenance manifest. “Reviewed” is a workflow label, not a scientific validation claim.
+
+### Image controls
 
 Use the **small arrow at the right of the image header** to hide the processing toolbar, inspector and on-image overlays (mask, contrast rectangle, profile/area/step guides and leveling points). Click it again to restore them. The image gains space; calibration, zoom and pan remain available. Hidden guides cannot be edited. Masks, selected regions, contrast limits and processing settings are retained, and the visibility preference is remembered locally. Choosing a drawing tool by shortcut or pressing **1–4** restores the controls. PNG figures omit the mask overlay while controls are hidden.
+
+### Processing controls
+
+In **Prepare → Scan lines**, choose **Rows** or **Columns** (the file's axis is marked) and click a method to apply it. Each click replaces the previous scan-line correction rather than stacking; **Off** removes it, and **Terrace** restores Auto level's terrace-aware correction. A chosen method runs before Auto level's plane fit; if that fit then fails, Auto level is removed and the notice asks for three points (undo restores it).
+
+**Level surface** follows with **Auto level**, **3-point level** and the reference region; plane, polynomial, terrace, zero-reference and scan-axis controls sit under **More corrections**. Mask controls are below.
+
+If automatic reference selection fails, the notice offers **Choose 3 leveling points**; click three clean, well-spaced points on the same plane.
+
+The **Auto level new height images when opened** preference at the bottom of Prepare can be turned off; with it on, browsing into an unprocessed height image saves that recipe. Images that already have a recipe are never automatically extended.
+
+Every successful correction is saved to the image’s recipe when applied. Use **⌘/Ctrl Z** or the undo control in **Record** to restore the previous recipe. **Record** also shows correction history and acquisition provenance. Export controls are above the image.
 
 ### Masks and color limits
 
@@ -105,6 +120,12 @@ Scroll or pinch over the canvas to zoom around the pointer. The visible **− / 
 Tabs preserve selections and their own scroll position; advanced sections retain their open state during the running session. Press **1–4** for the four inspector tabs, **C** for contrast, **V / H / P / A / M / T** for Inspect / Pan / Profile / Area / Mask / Step, **B** for the other scan direction, and **⌘/Ctrl Z** to undo the last correction. **Escape** first cancels an active drag, retaining the previous selection; otherwise it leaves the drawing tool, then returns to the session on another press. Losing pointer capture or switching away from the window also cancels an unfinished drag. Arrow keys inside fields and the tab strip adjust that control rather than changing the image. See the [interface references and community feedback](docs/interface-design.md) for the design rationale.
 
 Side-by-side comparison starts with each image's saved limits and palette. **Shared display range** uses common limits and one palette for channels with the same unit. Comparison statistics follow each image's mask setting.
+
+### 2D-material processing
+
+Open a calibrated height image and choose **Prepare → More corrections → Fit up to 3 terrace planes**. This applies and saves an `auto_2d` correction to the current result. If opening the image already applied Auto level, undo that correction first to start from the original data. Terrace fitting optionally corrects scan-line background, fits up to three spatial planes, and excludes particles/edges from fitting. It subtracts one reference tilt across the whole image, preserving terrace height and tilt differences. Excluded features remain in the output. Open the fitted-plane details and choose **Inspect fitted planes** to examine the removed background and fitting assignments. Compare with **Original** and use **⌘/Ctrl Z** to undo the correction if needed. Plane assignments are model inferences, not identified materials.
+
+The scan axis follows TIFF metadata, with a **Fast scan axis** override in More corrections. Switch off **Correct scan-line background** before applying the terrace correction to retain slow-axis shape: scan drift and real variation across a whole scan line are not always distinguishable. Strong coherent jumps are preserved for review. If terrace fitting fails, the saved recipe remains unchanged. Choose **3-point level**, or draw an **Area** as the reference and use **More corrections → Subtract reference plane**. See [methods and limitations](docs/science.md).
 
 ## Coordinates and scientific limits
 
@@ -177,9 +198,3 @@ Use the virtual environment's `Scripts/python.exe` on Windows. The GUI and MCP a
 ## License
 
 The combined application is [GPL-2.0-or-later](LICENSE). Earlier original code retains its [MIT grant](licenses/MIT-legacy.txt). Dependency licenses, source-distribution requirements and technical references are recorded in [third-party notices](docs/third-party.md). Private experimental data are not licensed for redistribution by this repository.
-
-### 2D-material processing
-
-Open a calibrated height image and choose **Prepare → More corrections → Fit up to 3 terrace planes**. This applies and saves an `auto_2d` correction to the current result. If opening the image already applied Auto level, undo that correction first to start from the original data. Terrace fitting optionally corrects scan-line background, fits up to three spatial planes, and excludes particles/edges from fitting. It subtracts one reference tilt across the whole image, preserving terrace height and tilt differences. Excluded features remain in the output. Open the fitted-plane details and choose **Inspect fitted planes** to examine the removed background and fitting assignments. Compare with **Original** and use **⌘/Ctrl Z** to undo the correction if needed. Plane assignments are model inferences, not identified materials.
-
-The scan axis follows TIFF metadata, with a **Fast scan axis** override in More corrections. Switch off **Correct scan-line background** before applying the terrace correction to retain slow-axis shape: scan drift and real variation across a whole scan line are not always distinguishable. Strong coherent jumps are preserved for review. If terrace fitting fails, the saved recipe remains unchanged. Choose **3-point level**, or draw an **Area** as the reference and use **More corrections → Subtract reference plane**. See [methods and limitations](docs/science.md).
