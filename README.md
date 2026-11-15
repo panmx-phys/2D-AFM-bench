@@ -197,4 +197,4 @@ Use the virtual environment's `Scripts/python.exe` on Windows. The GUI and MCP a
 
 ## License
 
-The combined application is [GPL-2.0-or-later](LICENSE). Earlier original code retains its [MIT grant](licenses/MIT-legacy.txt). Dependency licenses, source-distribution requirements and technical references are recorded in [third-party notices](docs/third-party.md). Private experimental data are not licensed for redistribution by this repository.
+AFM Workbench is licensed under [GNU GPL v2 or later](LICENSE). See [third-party notices](docs/third-party.md) for dependency licenses.

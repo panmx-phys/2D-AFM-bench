@@ -88,7 +88,7 @@ Keep the local catalog on one machine. SQLite documents network-file locking ris
 
 The repository should contain self-contained source code, installation and development instructions, format-support documentation, and automated checks for Mac and Windows. Documentation links use repository-relative Markdown or public URLs. Users choose their own data directories, and a fresh checkout must be usable without access to the original developer's machine or accounts.
 
-Use synthetic datasets and explicitly redistributable reference files for examples and tests. Record fixture provenance and applicable permissions alongside each file. Select the project license before public release and document dependency licenses. Public GitHub hosting is confirmed; the license has not yet been selected.
+Use synthetic datasets and explicitly redistributable reference files for examples and tests. Record fixture provenance and applicable permissions alongside each file. The implemented application uses [GNU GPL v2 or later](LICENSE), as agreed on 2026-11-10. Dependency licenses are documented in [third-party notices](docs/third-party.md).
 
 ## Agent and MCP Design
 

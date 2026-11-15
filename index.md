@@ -73,7 +73,7 @@ Direct corrections, 2026-11-12 (`origin: human; claim_status: decision`): the pr
 
 - The application manages its own samples, acquisitions, analysis recipes and results.
 - Documentation, development instructions and tests must work from a fresh repository checkout.
-- Examples and test fixtures use synthetic or explicitly redistributable data. The combined application uses [GPL-2.0-or-later](LICENSE), following the user's 2026-11-10 decision to use Gwyddion C as its primary scientific backend. Earlier original code retains its MIT grant.
+- Examples and test fixtures use synthetic or explicitly redistributable data. AFM Workbench uses [GNU GPL v2 or later](LICENSE). See [third-party notices](docs/third-party.md) for dependency licenses.
 
 ## Setup State
 

@@ -1,6 +1,6 @@
 # Dependencies and technical references
 
-The combined application is distributed under GPL-2.0-or-later. Gwyddion's scientific libraries and adapted module routines retain their upstream copyrights and GPL notices. Previously published original Workbench code retains its MIT grant, preserved in [MIT-legacy.txt](../licenses/MIT-legacy.txt); this does not remove the GPL requirements for the combined application.
+AFM Workbench is licensed under [GNU GPL v2 or later](../LICENSE). Dependencies retain their own licenses and copyright notices.
 
 | Dependency | Purpose | Upstream license / source |
 | --- | --- | --- |
@@ -23,7 +23,7 @@ original dependency licenses (including OpenSSL, SQLite, compression and other
 runtime components), bundled under `licenses/python/runtime-build/`. The exact
 distribution URLs/hashes are recorded in the release configuration and bundle.
 
-Desktop packaging collects original license/notice files for the Python distributions represented in PyInstaller's resolved module and binary collection, including optional dependencies pulled in by its hooks, plus the Python runtime notice and the earlier Workbench MIT grant. The resulting `licenses/python/manifest.json` records installed versions and notice checksums without local paths. A missing notice stops packaging. [Version-specific upstream copies](../licenses/python-fallbacks/manifest.json) cover releases whose wheels omit their notices; their upstream archive/file URLs and checksums are recorded. In particular, proxy_tools 0.1.0's package metadata says MIT, while its source header and upstream license say BSD; the original BSD notice is preserved. This inventory is packaging evidence, not a claim of legal clearance for every future dependency or platform build.
+Desktop packaging collects original license/notice files for the Python distributions represented in PyInstaller's resolved module and binary collection, including optional dependencies pulled in by its hooks, plus the Python runtime notice. The resulting `licenses/python/manifest.json` records installed versions and notice checksums without local paths. A missing notice stops packaging. [Version-specific upstream copies](../licenses/python-fallbacks/manifest.json) cover releases whose wheels omit their notices; their upstream archive/file URLs and checksums are recorded. In particular, proxy_tools 0.1.0's package metadata says MIT, while its source header and upstream license say BSD; the original BSD notice is preserved. This inventory is packaging evidence, not a claim of legal clearance for every future dependency or platform build.
 
 The executed native Mac build also contains libffi, PCRE2, gettext/libintl and libiconv. Its [pinned dependency manifest](../native/dependencies-macos-arm64.json) and [source collector](../scripts/collect_native_sources.py) preserve original notices, exact source archives, recipes and patches. The local `afm_workbench/_native/licenses` and `sources` outputs accompany packaged binaries. Use the manifests for the binaries actually distributed; the Mac manifest is not a substitute for different Homebrew or Windows dependencies.
 
