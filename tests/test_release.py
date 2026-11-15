@@ -6,7 +6,7 @@ from pathlib import Path
 import tarfile
 import tempfile
 import unittest
-import zipfile
+from contextlib import ExitStack
 from unittest.mock import patch
 
 from scripts import build_gwyddion, release_macos, release_windows, source_release
@@ -32,21 +32,35 @@ class ReleaseTests(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError, 'Unresolved DLL'):
                     build_gwyddion.bundle_windows(bundle, [prefix])
 
-    def test_windows_zip_is_deterministic_and_preserves_application_layout(self):
+    def test_windows_package_keeps_one_exe_and_separate_sources_with_valid_checksums(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
-            app = root/'AFM Workbench'
-            (app/'_internal').mkdir(parents=True)
-            (app/'AFM Workbench.exe').write_bytes(b'exe')
-            dll = app/'_internal/backend.dll'
-            dll.write_bytes(b'dll')
-            a, b = root/'a.zip', root/'b.zip'
-            release_windows.deterministic_zip(a, app, 1234567890)
-            os.utime(dll, (123, 123))
-            release_windows.deterministic_zip(b, app, 1234567890)
-            self.assertEqual(a.read_bytes(), b.read_bytes())
-            with zipfile.ZipFile(a) as archive:
-                self.assertEqual(archive.read('AFM Workbench/_internal/backend.dll'), b'dll')
+            for name in ('dist', 'release', 'native', 'afm_workbench/_native'):
+                (root/name).mkdir(parents=True)
+            exe = root/'dist/AFM Workbench.exe'
+            exe.write_bytes(b'portable application')
+            (root/'dist/AFM-Workbench-source.tar.gz').write_bytes(b'corresponding sources')
+            (root/'afm_workbench/_native/build-manifest.json').write_text('{}')
+            (root/'release/windows-bootstrap.lock').write_text('bootstrap')
+            with ExitStack() as stack:
+                for name, value in {'ROOT': root, 'BUNDLE': exe,
+                                    'TOOLCHAIN': root/'release/toolchain.json',
+                                    'NATIVE': root/'native/dependencies.json',
+                                    'LOCK': root/'release/windows.lock'}.items():
+                    stack.enter_context(patch.object(release_windows, name, value))
+                for path in (release_windows.TOOLCHAIN, release_windows.NATIVE, release_windows.LOCK):
+                    path.write_text('input')
+                stack.enter_context(patch.object(release_windows, 'version', return_value='1.2.3'))
+                stack.enter_context(patch.object(release_windows, 'output', return_value='[]'))
+                output = release_windows.package('v1.2.3', 'abc', False, 1234567890, 'compiler', [], {})
+            self.assertEqual((output/'AFM-Workbench-v1.2.3-windows-x64.exe').read_bytes(), exe.read_bytes())
+            self.assertFalse(list(output.glob('*.zip')))
+            self.assertFalse(any(p.is_dir() for p in output.iterdir()))
+            sums = (output/'SHA256SUMS').read_bytes()
+            self.assertNotIn(b'\r', sums)
+            for line in sums.decode().splitlines():
+                digest, name = line.split('  ')
+                self.assertEqual(release_windows.sha256(output/name), digest)
 
     def test_windows_cleanup_rejects_source_and_checkout_root(self):
         for path in (release_windows.ROOT, release_windows.ROOT/'afm_workbench', release_windows.WORK):

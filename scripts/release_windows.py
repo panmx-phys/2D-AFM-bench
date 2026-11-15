@@ -17,8 +17,6 @@ import subprocess
 import sys
 import tarfile
 import tempfile
-import time
-import zipfile
 
 try:
     from .build_gwyddion import SOURCES
@@ -34,8 +32,7 @@ WORK = ROOT/'.test-artifacts/windows'
 TOOLCHAIN = ROOT/'release/windows-x64-toolchain.json'
 NATIVE = ROOT/'native/dependencies-windows-x64.json'
 LOCK = ROOT/'release/windows-x64.lock'
-APP = ROOT/'dist/AFM Workbench'
-BUNDLE = APP/'AFM Workbench.exe'
+BUNDLE = ROOT/'dist/AFM Workbench.exe'
 
 
 def output(*args):
@@ -89,57 +86,47 @@ def native_build(offline=False):
     return output(compiler, '--version').splitlines()[0]
 
 
-def deterministic_zip(destination, folder, epoch):
-    stamp = time.gmtime(max(315532800, epoch))[:6]
-    with zipfile.ZipFile(destination, 'w', compression=zipfile.ZIP_DEFLATED, compresslevel=9) as archive:
-        for path in sorted(folder.rglob('*')):
-            if not path.is_file():
-                continue
-            if path.is_symlink():
-                raise RuntimeError('Windows ZIP must not depend on symlink privileges.')
-            info = zipfile.ZipInfo(folder.name+'/'+path.relative_to(folder).as_posix(), stamp)
-            info.compress_type = zipfile.ZIP_DEFLATED
-            info.create_system = 0
-            info.external_attr = 0o644 << 16
-            archive.writestr(info, path.read_bytes())
-
-
-def inspect_bundle(folder):
-    """Check native PE architecture and dependency closure without host PATH."""
+def inspect_bundle(executable):
+    """Inspect the actual one-file payload, without extracting or using host PATH."""
     import pefile
+    from PyInstaller.archive.readers import CArchiveReader
+    archive = CArchiveReader(str(executable))
     system = Path(os.environ['SystemRoot'])/'System32'
-    binaries = [p for p in folder.rglob('*') if p.suffix.lower() in {'.exe', '.dll', '.pyd'}]
-    names = {p.name.casefold() for p in binaries}
-    native = folder/'_internal/afm_workbench/_native'
+    binaries = {name.replace('\\', '/'): name for name in archive.toc
+                if Path(name).suffix.lower() in {'.exe', '.dll', '.pyd'}}
+    names = {Path(name).name.casefold() for name in binaries}
+    native = 'afm_workbench/_native/'
+    if native+'afm_gwyddion.dll' not in binaries:
+        raise RuntimeError('Missing packaged scientific backend.')
     records = {}
-    for path in binaries:
-        pe = pefile.PE(str(path), fast_load=True)
+    for name, archived_name in [(executable.name, None), *binaries.items()]:
+        pe = (pefile.PE(str(executable), fast_load=True) if archived_name is None
+              else pefile.PE(data=archive.extract(archived_name), fast_load=True))
         try:
             # .NET AnyCPU assemblies can have an I386 header; native code must be x64.
             managed = bool(pe.OPTIONAL_HEADER.DATA_DIRECTORY[14].VirtualAddress)
             if not managed and pe.FILE_HEADER.Machine != 0x8664:
-                raise RuntimeError(f'Non-x64 native binary: {path.name}')
+                raise RuntimeError(f'Non-x64 native binary: {name}')
             pe.parse_data_directories(directories=[1, 13])
             dependencies = [entry.dll.decode() for attr in ('DIRECTORY_ENTRY_IMPORT', 'DIRECTORY_ENTRY_DELAY_IMPORT')
                             for entry in getattr(pe, attr, [])]
-            if path.parent == native:
-                for name in dependencies:
-                    if name.casefold() not in names and not name.lower().startswith(('api-ms-win-', 'ext-ms-win-')) and not (system/name).is_file():
-                        raise RuntimeError(f'Unresolved native dependency {name} in {path.name}')
-                records[path.name] = dependencies
+            if name.startswith(native):
+                for dependency in dependencies:
+                    if dependency.casefold() not in names and not dependency.lower().startswith(('api-ms-win-', 'ext-ms-win-')) and not (system/dependency).is_file():
+                        raise RuntimeError(f'Unresolved native dependency {dependency} in {name}')
+                records[Path(name).name] = dependencies
         finally:
             pe.close()
-    if not (native/'afm_gwyddion.dll').is_file() or not binaries:
-        raise RuntimeError('Missing packaged scientific backend.')
-    return {'pe_files': len(binaries), 'native_dll_imports': records}
+    return {'format': 'single portable executable', 'pe_files': len(binaries)+1,
+            'native_dll_imports': records}
 
 
 def package(label, revision, dirty, epoch, compiler, reports, inspection):
     destination = ROOT/'dist/release-windows'
     with tempfile.TemporaryDirectory(dir=ROOT/'dist') as temporary:
         stage = Path(temporary)
-        application = stage/f'AFM-Workbench-{label}-windows-x64.zip'
-        deterministic_zip(application, APP, epoch)
+        application = stage/f'AFM-Workbench-{label}-windows-x64.exe'
+        shutil.copy2(BUNDLE, application)
         source = stage/f'AFM-Workbench-{label}-windows-source.tar.gz'
         shutil.copy2(ROOT/'dist/AFM-Workbench-source.tar.gz', source)
         manifest = {
@@ -153,16 +140,17 @@ def package(label, revision, dirty, epoch, compiler, reports, inspection):
             'assets': {p.name: sha256(p) for p in (application, source)},
             'checks': reports, 'bundle_inspection': inspection,
             'requirements': ['Windows 10/11 x64', 'Microsoft Edge WebView2 Runtime', '.NET Framework 4.8'],
-            'remaining_acceptance': ['packaged desktop visual startup', 'clean-machine installation', 'Authenticode signing', 'physical File Explorer folder drop'],
+            'remaining_acceptance': ['packaged desktop visual startup', 'clean-machine startup', 'Authenticode signing', 'physical File Explorer folder drop'],
             'reproducibility': 'Pinned Python packages and native packages/sources; Python interpreter and Windows SDK/runtime are host-supplied and recorded. Byte-identical binaries across hosts are not promised.'}
         (stage/'build-manifest.json').write_text(json.dumps(manifest, indent=2)+'\n', encoding='utf-8')
         (stage/'release-notes.md').write_text(
             f'# AFM Workbench {label} - experimental Windows x64 candidate\n\n'
-            'Extract the entire ZIP, then open `AFM Workbench/AFM Workbench.exe`. '
-            'Keep the `_internal` folder next to the executable. No Python or compiler installation is needed. '
+            'Save the portable `.exe` anywhere and open it. No installer, adjacent support folder, '
+            'Python or compiler installation is needed. The runtime is embedded and expands into user TEMP when opened. '
+            'The catalog stays in `%LOCALAPPDATA%/AFM Workbench`; `--data-dir PATH` selects another workspace. '
             'Requires Windows 10/11 x64, Microsoft Edge WebView2 Runtime and .NET Framework 4.8.\n\n'
             'This build is unsigned. Windows may display a SmartScreen warning. '
-            'Packaged desktop visual startup, clean-machine installation and physical File Explorer folder drops remain unverified. '
+            'Packaged desktop visual startup, clean-machine startup and physical File Explorer folder drops remain unverified. '
             'Keep the candidate as a draft pending those acceptance checks.\n\n'
             'The build manifest records exactly which Python, packaged runtime, browser and desktop checks ran. '
             'Six legacy browser checks remain inactive. Synthetic tests do not establish validation for every experimental dataset.\n\n'
@@ -211,7 +199,7 @@ def main():
         run(sys.executable, 'scripts/test.py', *selection)
         latest = max((ROOT/'.test-artifacts/runs').glob('*/report.json'), key=lambda p:p.stat().st_mtime_ns)
         reports.append(summarize_report(json.loads(latest.read_text())))
-    inspection = inspect_bundle(APP)
+    inspection = inspect_bundle(BUNDLE)
     if args.tag and output('git', 'status', '--porcelain', '--untracked-files=all'):
         raise RuntimeError('Release source changed during the build.')
     label = args.tag or f'v{app_version}-snapshot'

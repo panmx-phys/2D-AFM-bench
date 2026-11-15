@@ -163,9 +163,13 @@ the packaged runtime smoke. It does not install MSYS2 or modify system Python.
 The host CPython distribution is recorded, rather than provisioned by the recipe;
 compiler/Python/build-path differences can affect binary bytes.
 
-Outputs are under `dist/release-windows/`: a portable application ZIP, matching
+Outputs are under `dist/release-windows/`: a single portable application EXE, matching
 Windows corresponding-source archive, `build-manifest.json`, `SHA256SUMS` and
-`release-notes.md`. Extract the whole ZIP and keep `_internal` beside the EXE.
+`release-notes.md`. Save the EXE anywhere and open it; no installer or adjacent
+support files are needed. Its embedded runtime expands to user TEMP at startup.
+The catalog defaults to `%LOCALAPPDATA%/AFM Workbench`; use `--data-dir PATH`
+to select another workspace. The release inspection reads the embedded archive
+and verifies the bootloader and payload PE architectures and native DLL closure.
 The target is Windows 10/11 x64 with WebView2 Runtime and .NET Framework 4.8.
 No Python, compiler, GLib or FFTW installation is needed by the end user.
 
@@ -185,6 +189,14 @@ Only successful tagged builds create an experimental **draft** release; existing
 assets are never overwritten. Unsigned candidates remain drafts pending clean
 machine installation, physical File Explorer drop testing and signing. Creating
 the workflow is not evidence that GitHub Actions ran it.
+
+For the combined portable prerelease, keep exactly two application attachments:
+the Windows EXE and a Mac `.app.tar.gz` containing only `AFM Workbench.app`.
+A `.app` is a directory bundle, so GitHub needs an archive to preserve its files,
+permissions and symlinks. Publish the complete matching source archives and build
+records separately and link them directly from the application release notes.
+Keep each platform's source revision explicit when reusing an existing Mac app;
+never move a published tag to make different builds appear to share a revision.
 
 ## Other desktop/development builds
 

@@ -150,10 +150,13 @@ def server(root, run_dir, check_id, bundle=None):
     with tempfile.TemporaryDirectory(prefix='afm-check-') as workspace:
         log_path = run_dir / (check_id + '-server.log')
         ready = Path(workspace) / 'server-ready.txt'
+        # Keep one-file extraction inside this disposable workspace. Its parent
+        # bootloader and child server both need stopping before cleanup on Windows.
+        env = {**os.environ, 'TEMP': workspace, 'TMP': workspace} if sys.platform == 'win32' else None
         with log_path.open('w') as output:
             process = subprocess.Popen(command + ['--browser', '--demo', '--port', '0',
                                        '--data-dir', workspace, '--ready-file', str(ready)], cwd=root, stdout=output,
-                                       stderr=subprocess.STDOUT)
+                                       stderr=subprocess.STDOUT, env=env)
             try:
                 deadline = time.monotonic() + 60
                 while time.monotonic() < deadline:
@@ -173,12 +176,17 @@ def server(root, run_dir, check_id, bundle=None):
                 raise TimeoutError('Server did not start within 60 seconds: ' + str(log_path))
             finally:
                 if process.poll() is None:
-                    process.terminate()
-                    try:
+                    if sys.platform == 'win32':
+                        subprocess.run(['taskkill', '/PID', str(process.pid), '/T', '/F'],
+                                       stdout=output, stderr=subprocess.STDOUT, check=True, timeout=15)
                         process.wait(timeout=5)
-                    except subprocess.TimeoutExpired:
-                        process.kill()
-                        process.wait()
+                    else:
+                        process.terminate()
+                        try:
+                            process.wait(timeout=5)
+                        except subprocess.TimeoutExpired:
+                            process.kill()
+                            process.wait()
 
 
 def run_check(check, args, run_dir):

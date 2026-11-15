@@ -47,10 +47,16 @@ if os.environ.get('AFM_RUNTIME_NOTICES_DIR'):
     a.datas += [(dest, source, 'DATA') for dest, source in format_binaries_and_datas(
         [(str(runtime_notices), 'licenses/python/runtime-build')])]
 pyz = PYZ(a.pure)
-exe = EXE(pyz, a.scripts, [], exclude_binaries=True, name='AFM Workbench',
-          debug=False, bootloader_ignore_signals=False, strip=False, upx=False,
-          console=False, disable_windowed_traceback=False)
-coll = COLLECT(exe, a.binaries, a.datas, strip=False, upx=False, name='AFM Workbench')
+if sys.platform == 'win32':
+    # One portable executable; the bootloader expands its runtime to user TEMP.
+    exe = EXE(pyz, a.scripts, a.binaries, a.datas, [], name='AFM Workbench',
+              debug=False, bootloader_ignore_signals=False, strip=False, upx=False,
+              console=False, disable_windowed_traceback=False)
+else:
+    exe = EXE(pyz, a.scripts, [], exclude_binaries=True, name='AFM Workbench',
+              debug=False, bootloader_ignore_signals=False, strip=False, upx=False,
+              console=False, disable_windowed_traceback=False)
+    coll = COLLECT(exe, a.binaries, a.datas, strip=False, upx=False, name='AFM Workbench')
 if sys.platform == 'darwin':
     version = next(ast.literal_eval(node.value) for node in ast.parse(
         (root / 'afm_workbench' / '__init__.py').read_text()).body

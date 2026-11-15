@@ -12,11 +12,12 @@ A local desktop application for browsing, processing and measuring atomic force 
 
 ## Download
 
-Download the Apple Silicon Mac binary from [GitHub Releases](https://github.com/panmx-phys/2D-AFM-bench/releases). Version 0.1.0 is an experimental prerelease for macOS 14 or newer, with an ad-hoc signature and no Apple notarization. Clean-Mac installation is not yet validated; macOS may block opening it. Intel Mac binaries are not available.
+Download the portable apps from the combined [Windows and Mac release](https://github.com/panmx-phys/2D-AFM-bench/releases/tag/v0.1.0). Version 0.1.0 is an experimental prerelease with two application downloads:
 
-Extract the `macos-arm64.tar.gz` archive and open **AFM Workbench.app**. The matching source archive, build manifest and checksums accompany the binary. See the release notes for executed checks and remaining limitations.
+- **Windows x64:** save the single `.exe` anywhere and open it. No installer or adjacent support folder is needed. Python and the scientific libraries are embedded; Windows 10/11 x64, Microsoft Edge WebView2 Runtime and .NET Framework 4.8 are required. The executable is unsigned.
+- **Apple Silicon Mac:** extract the `.app.tar.gz` download and open **AFM Workbench.app**. The archive contains only the app bundle. Requires macOS 14 or newer; Intel Macs are not supported. The app has an ad-hoc signature and is not notarized.
 
-A Windows x64 candidate can be built with the [Windows release recipe](docs/publishing.md#windows-x64-candidate). Extract its entire `windows-x64.zip` and open **AFM Workbench/AFM Workbench.exe**, keeping `_internal` beside it. It includes Python and the native scientific libraries; Windows 10/11 x64, Microsoft Edge WebView2 Runtime and .NET Framework 4.8 are required. The candidate is unsigned, and clean-machine installation remains an acceptance gate. See [validation](docs/validation.md) for the checks actually executed.
+These apps run locally and offline. Windows expands its embedded runtime to the user's temporary directory at startup. Catalogs and imported data stay in the user's application-data directory; use `--data-dir PATH` to choose another location, including a folder on a portable drive. Matching source archives and build records are separate downloads linked in the release notes. Clean-machine startup remains unverified; Windows or macOS may warn about the unsigned/unnotarized app. See [validation](docs/validation.md) and the [Windows build recipe](docs/publishing.md#windows-x64-candidate).
 
 ## Run from source
 

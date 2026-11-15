@@ -112,6 +112,28 @@ class TestSelectionTests(unittest.TestCase):
 
 
 class RunnerOutcomeTests(unittest.TestCase):
+    def test_windows_server_stops_child_tree_and_preserves_smoke_failure(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            with patch.object(runner.sys, 'platform', 'win32'), \
+                    patch.object(runner.subprocess, 'Popen') as start, \
+                    patch.object(runner.subprocess, 'run') as stop:
+                process = start.return_value
+                process.pid = 12345
+                process.poll.return_value = None
+                def launch(command, **kwargs):
+                    ready = Path(command[command.index('--ready-file')+1])
+                    self.assertEqual(kwargs['env']['TEMP'], str(ready.parent))
+                    ready.write_text('http://127.0.0.1:1234/', encoding='utf-8')
+                    return process
+                start.side_effect = launch
+                with self.assertRaisesRegex(RuntimeError, 'smoke failed'):
+                    with runner.server(root, root, 'example', root/'portable.exe') as url:
+                        self.assertEqual(url, 'http://127.0.0.1:1234/')
+                        raise RuntimeError('smoke failed')
+                self.assertEqual(stop.call_args.args[0], ['taskkill', '/PID', '12345', '/T', '/F'])
+                process.wait.assert_called_once_with(timeout=5)
+
     def run_example(self, check, **patches):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
