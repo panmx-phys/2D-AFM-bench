@@ -170,7 +170,8 @@ def package(label, revision, dirty, epoch, compiler, reports, inspection):
             "GitHub's automatic source ZIP does not replace it. `SHA256SUMS` covers every release asset; "
             'use PowerShell `Get-FileHash -Algorithm SHA256` to verify downloads.\n\n'
             f'Source commit: `{revision}`. Dirty checkout: `{dirty}`.\n', encoding='utf-8')
-        (stage/'SHA256SUMS').write_text(''.join(f'{sha256(p)}  {p.name}\n' for p in sorted(stage.iterdir())), encoding='utf-8')
+        # The upload job verifies on Linux; CRLF would become part of each filename.
+        (stage/'SHA256SUMS').write_text(''.join(f'{sha256(p)}  {p.name}\n' for p in sorted(stage.iterdir())), encoding='utf-8', newline='\n')
         remove_generated(destination)
         shutil.copytree(stage, destination)
     return destination

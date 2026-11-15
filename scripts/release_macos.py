@@ -51,8 +51,8 @@ def sha256(path):
 
 
 def version():
-    project = tomllib.loads((ROOT / 'pyproject.toml').read_text())['project']['version']
-    tree = ast.parse((ROOT / 'afm_workbench/__init__.py').read_text())
+    project = tomllib.loads((ROOT / 'pyproject.toml').read_text(encoding='utf-8'))['project']['version']
+    tree = ast.parse((ROOT / 'afm_workbench/__init__.py').read_text(encoding='utf-8'))
     runtime = next(ast.literal_eval(n.value) for n in tree.body if isinstance(n, ast.Assign)
                    and any(isinstance(t, ast.Name) and t.id == '__version__' for t in n.targets))
     if runtime != project or not re.fullmatch(r'(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)', project):
