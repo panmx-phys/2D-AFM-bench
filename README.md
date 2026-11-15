@@ -176,7 +176,7 @@ Build the native backend and collect the corresponding sources/notices for its a
 
 Build separately on each target OS. On macOS the application is `dist/AFM Workbench.app`. Windows native packaging remains unvalidated. CI builds on Mac and Linux, runs affected Python checks on pull requests and full Python checks on pushes/manual runs. Desktop renderer and packaging checks remain local; see [validation status](docs/validation.md) for executed evidence. Public release still needs signing/notarization and platform acceptance testing.
 
-See [publishing](docs/publishing.md) for exporting a standalone source repository and the separate desktop-release requirements.
+For a pinned Apple Silicon Mac candidate, run `python scripts/release_macos.py` (Python 3.12+ bootstrap and Apple Command Line Tools). It provisions an exact portable interpreter and hash-locked dependencies, rebuilds, runs all Python tests and the packaged runtime smoke, and creates application/source archives plus checksums under `dist/release/`. Pushing a matching `vX.Y.Z` tag runs the same recipe in GitHub Actions and creates a **draft** release. See [publishing](docs/publishing.md#reproducible-apple-silicon-mac-candidate) for clean-tag requirements, offline replay, reproducibility limits and signing/acceptance gates.
 
 ## Agent access
 

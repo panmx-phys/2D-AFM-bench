@@ -39,7 +39,7 @@ The JSON catalog is the executable inventory. Existing assertions stay in their 
 | `performance` | `performance`, `fluidity`, `processing-latency` | Cache correctness, transport, per-frame work and local latency measurements |
 | `folders` | `desktop-drop`, `folders-ui`, `folder-drop-ui` | Folder lifecycle, reconnect/archive, native path bridge and invalid drops |
 | `map` | `map-ui` | Overlapping/rotated footprints, selection, filters and compact layout |
-| `tooling` | `test-runner`, `packaging` | Inventory drift, impact rules, Git scope, result accounting, archive privacy and dependency notices |
+| `tooling` | `test-runner`, `packaging`, `release` | Inventory drift, impact rules, Git scope, result accounting, archive privacy, dependency notices, release gates and deterministic archives |
 
 `runtime` needs only Python's standard library on the client side and exercises the running app's bundled scientific engine. Browser checks need Node, Playwright and Chromium. Install them separately when needed (`npm install --no-save --package-lock=false playwright`, then `npx playwright install chromium`); keep `node_modules/` out of source control. `AFM_PLAYWRIGHT_MODULE` can point to an existing Playwright installation, `--node` selects Node, and `--browser` selects a Chromium executable. The runner supplies `AFM_PYTHON` for synthetic fixture generation.
 
@@ -73,3 +73,11 @@ Current Python, canvas and performance checks cover many of their scientific and
 Add a check entry with a unique ID/path, kind, group, purpose and status. Python imports supply most dependency edges; `dependency_inputs` connects native source/build inputs to their Python wrapper and its consumers. Use `affects` glob patterns for fixtures and cross-language/UI dependencies. Every file matching `tests/test_*.py`, `scripts/*-smoke.py`, `scripts/*-smoke.cjs` or `scripts/check_*.py` must appear exactly once. Run `--check test-runner` and inspect representative plans after changing mappings. Keep coverage limitations explicit.
 
 [CI](../.github/workflows/check.yml) fetches history, builds the native backend on Mac/Linux and runs affected Python suites on pull requests using the PR base SHA. Pushes and manual runs execute all Python suites. Reports are uploaded even on failure. Browser/native GUI and packaged smoke checks are local checks; a successful Python CI job does not certify them or Windows compatibility.
+
+The separate [Mac release workflow](../.github/workflows/release.yml) provisions
+hash-pinned dependencies, rebuilds, runs all Python suites and the packaged
+`runtime` check, and validates signature/architecture/deployment metadata before
+creating draft assets. GUI/browser checks and the six legacy scripts remain
+explicitly deferred/inactive in its manifest. Run the full active suite against
+the resulting executable for desktop acceptance; a successful candidate build
+does not replace that step. See [release instructions](publishing.md).

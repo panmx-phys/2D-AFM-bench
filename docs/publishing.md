@@ -34,7 +34,106 @@ their separately documented dependencies. Preserve failed, skipped and legacy
 results in the release record. Source publication does not establish scientific
 validation or support on an untested platform.
 
-## Desktop binaries
+## Reproducible Apple Silicon Mac candidate
+
+Use the [release recipe](../scripts/release_macos.py) on a native arm64 Mac with
+Python 3.12+ for bootstrapping and Apple's Command Line Tools (`cc`, `make`,
+`xcrun`, `install_name_tool`, `codesign`). No Homebrew GLib/FFTW, Conda install,
+signing credentials or existing native build is needed. The recipe downloads
+the [checksum-pinned portable CPython 3.12.16 distribution](../release/macos-arm64.json)
+into the checkout; it does not replace system Python.
+
+Stage new source files, then build a local candidate:
+
+```sh
+python3 scripts/release_macos.py
+```
+
+This produces a `vX.Y.Z-snapshot` and records whether the checkout is dirty.
+To reproduce a committed candidate, use a clean checkout of its existing tag:
+
+```sh
+git checkout v0.1.0
+python3 scripts/release_macos.py --tag v0.1.0
+```
+
+Substitute the intended tag. Tagged builds require `vX.Y.Z` to match both
+`pyproject.toml` and `afm_workbench/__init__.py`, point at `HEAD`, and have no
+tracked or untracked source changes. The bundle uses that application version.
+Each invocation recreates its interpreter, virtual environment, native build and
+dependency prefix. Download caches live under `.test-artifacts/release-macos/`;
+`--offline` reuses them while still verifying hashes and rebuilding. Missing
+cached inputs fail the offline build.
+
+The Python [bootstrap](../release/macos-bootstrap.lock) and
+[application](../release/macos-arm64.lock) locks pin exact archive hashes,
+including PyInstaller hooks. The sole sdist, `proxy_tools`, builds with locked
+setuptools/wheel and no isolated dependency resolution. The native manifest
+supplies exact GLib/dependency binaries and development headers; Gwyddion and
+FFTW compile from verified sources. Matching recipes, patches, sources and
+notices accompany the app. Portable Python's complete build metadata and
+dependency notices are verified and bundled too.
+Native builds use Apple's clang and explicit baseline arm64 flags, including
+FFTW, whose configure defaults otherwise tune for the build machine's CPU.
+
+The recipe invokes `scripts/build.py`, runs **all active Python checks**, tests
+the rebuilt executable with `runtime`, verifies the ad-hoc signature, and
+inspects Mach-O binaries for arm64, deployment floor and absolute non-system
+library references. Tagged builds fail if the actual floor exceeds macOS 14.
+Inspection does not establish clean-Mac compatibility. GUI/browser acceptance
+remains deferred; six legacy browser scripts remain excluded. Failed attempts
+do not leave an older `dist/release/` looking like a successful candidate.
+
+Successful outputs under `dist/release/` are:
+
+- `AFM-Workbench-vX.Y.Z-macos-arm64.tar.gz`: the complete `.app`, preserving executable modes and symlinks.
+- `AFM-Workbench-vX.Y.Z-source.tar.gz`: matching Workbench and native corresponding sources. GitHub's automatic source archives do **not** replace this asset.
+- `build-manifest.json`: commit/dirty flag, input hashes, exact Python distribution/packages, compiler/SDK/runner image, asset hashes and executed/deferred checks.
+- `SHA256SUMS` and `release-notes.md`: download verification and candidate limitations.
+
+Verify with `shasum -a 256 -c SHA256SUMS` in the downloaded asset directory.
+Archives normalize path order, owners, modes and timestamps; gzip headers omit
+the output filename. Builds fix `PYTHONHASHSEED` and use the commit timestamp as
+`SOURCE_DATE_EPOCH`, following [PyInstaller's guidance](https://pyinstaller.org/en/stable/advanced-topics.html#creating-a-reproducible-build).
+This is a pinned, replayable recipe with deterministic archive serialization.
+Byte-identical binaries **across different hosts** are not promised: compiler,
+SDK, linker, build paths and hosted-runner image updates can affect output.
+Toolchain values are recorded for comparison. Lock updates require fresh full
+regression/build checks, a notice audit and a packaged smoke.
+
+## Tag-triggered GitHub release
+
+[The workflow](../.github/workflows/release.yml) runs on pushed `v*` tags and can
+be manually dispatched for artifact-only testing. It uses an explicit
+`macos-15` arm64 runner and commit-pinned actions. GitHub supplies Python 3.12.10
+only as the bootstrap; the recipe provisions the pinned CPython 3.12.16 runtime.
+This avoids depending on a macOS interpreter missing from setup-python's
+catalog. See [GitHub's runner documentation](https://docs.github.com/en/actions/how-tos/write-workflows/choose-where-workflows-run/choose-the-runner-for-a-job).
+
+After reviewing and committing a version change, a maintainer can trigger it:
+
+```sh
+git tag -a v0.1.0 -m "AFM Workbench 0.1.0"
+git push origin v0.1.0
+```
+
+The build job has read-only repository permission. Only a successful tag build
+enables a separate job with `contents: write`; it verifies asset checksums and
+creates a **draft** release with the app, corresponding sources, manifest and
+checksums. It uses [`gh release create --verify-tag --draft`](https://cli.github.com/manual/gh_release_create)
+and `GITHUB_TOKEN`; no personal token is required. It never creates a missing
+tag or replaces an existing release's assets. Inspect/delete an incomplete
+draft before rerunning a failed upload; never move a released tag. Manual runs
+upload Actions artifacts without creating releases. Test reports are retained
+even if checks fail.
+
+Keep the candidate as a draft until full [acceptance checks](testing.md) against
+its executable, packaged desktop startup, clean-Mac installation, Developer ID
+signing and notarization are complete. The workflow does not publish an unsigned
+candidate as a finished release or provide Intel Mac/universal2/Windows binaries.
+Adding the workflow does not imply that a tag was pushed or a GitHub run executed.
+
+## Other desktop/development builds
 
 Build on the target OS and collect the sources and notices for the exact native
 dependencies distributed, following the [native instructions](../native/README.md).

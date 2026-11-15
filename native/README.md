@@ -8,6 +8,12 @@ The combined distribution uses GPL-2.0-or-later. Preserve upstream and dependenc
 
 ## Development build
 
+For a distributable Mac arm64 candidate, prefer the [pinned release recipe](../docs/publishing.md#reproducible-apple-silicon-mac-candidate).
+It extracts this directory's exact dependency packages (including the GLib
+development header), builds FFTW/Gwyddion from verified sources, and collects
+matching sources/recipes/notices. The commands below remain useful for local
+development with supplied libraries.
+
 Install this repository's Python dependencies first. A C99 compiler, GLib development headers/libraries, FFTW3 development headers/libraries and `pkg-config` are needed. No system-wide Gwyddion installation is required.
 
 On macOS, one dependency route is Homebrew:

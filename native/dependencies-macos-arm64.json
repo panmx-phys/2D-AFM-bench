@@ -1,5 +1,5 @@
 {
-  "purpose": "Dependency provenance for the executed Mac arm64 development build; generic builds use supplied GLib/FFTW packages.",
+  "purpose": "Pinned Mac arm64 dependency binaries, headers and corresponding sources for scripts/release_macos.py; generic development builds may use other supplied packages.",
   "packages": [
     {
       "name": "libffi",

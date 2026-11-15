@@ -200,7 +200,34 @@
         "scripts/package_notices.py",
         "scripts/source_release.py",
         "AFM-Workbench.spec",
-        "licenses/python-fallbacks/*"
+        "licenses/python-fallbacks/*",
+        "scripts/release_macos.py",
+        "release/*",
+        ".github/workflows/release.yml",
+        "scripts/collect_native_sources.py",
+        "native/dependencies-macos-arm64.json"
+      ]
+    },
+    {
+      "id": "release",
+      "path": "tests/test_release.py",
+      "kind": "unit",
+      "status": "active",
+      "groups": [
+        "tooling"
+      ],
+      "purpose": "Tag/version/clean-source gates, hash locks, deterministic archives and release input selection",
+      "affects": [
+        "scripts/release_macos.py",
+        "release/*",
+        ".github/workflows/release.yml",
+        "scripts/collect_native_sources.py",
+        "native/dependencies-macos-arm64.json",
+        "scripts/source_release.py",
+        "scripts/build.py",
+        "AFM-Workbench.spec",
+        "pyproject.toml",
+        "afm_workbench/__init__.py"
       ]
     },
     {
@@ -237,7 +264,12 @@
         "afm_workbench/native_backend.py",
         "afm_workbench/science.py",
         "afm_workbench/view_state.py",
-        "scripts/package_notices.py"
+        "scripts/package_notices.py",
+        "scripts/release_macos.py",
+        "release/*",
+        ".github/workflows/release.yml",
+        "scripts/collect_native_sources.py",
+        "native/dependencies-macos-arm64.json"
       ],
       "args": []
     },

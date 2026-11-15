@@ -15,14 +15,30 @@ import urllib.request
 import zipfile
 
 
+def decompress_zstd(source, destination, zstd='zstd'):
+    # Release environments use the hash-locked Python wheel, without Homebrew.
+    try:
+        import zstandard
+    except ImportError:
+        subprocess.run([zstd, '-d', '-f', str(source), '-o', str(destination)],
+                       check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    else:
+        with source.open('rb') as compressed, destination.open('wb') as output:
+            zstandard.ZstdDecompressor().copy_stream(compressed, output)
+
+
 def acquire(spec, cache, download):
     name=spec.get('filename') or spec['url'].rsplit('/',1)[-1]
     target=cache/name
     if not target.exists():
         if not download:
             raise RuntimeError(f'Missing {target}; copy the pinned file or pass --download.')
-        with urllib.request.urlopen(spec['url'],timeout=120) as response,target.open('wb') as stream:
+        partial = target.with_name(target.name + '.partial')
+        with urllib.request.urlopen(spec['url'],timeout=120) as response,partial.open('wb') as stream:
             shutil.copyfileobj(response,stream)
+        if hashlib.sha256(partial.read_bytes()).hexdigest() != spec['sha256']:
+            raise RuntimeError(f'Checksum mismatch: {partial}')
+        partial.replace(target)
     if hashlib.sha256(target.read_bytes()).hexdigest()!=spec['sha256']:
         raise RuntimeError(f'Checksum mismatch: {target}')
     return target
@@ -39,7 +55,7 @@ def collect(manifest, cache, source_bundle, licenses, zstd='zstd', download=Fals
             member=next(m for m in container.namelist() if m.startswith('info-') and m.endswith('.tar.zst'))
             compressed=metadata/Path(member).name;compressed.write_bytes(container.read(member))
         unpacked=metadata/'metadata.tar'
-        subprocess.run([zstd,'-d','-f',str(compressed),'-o',str(unpacked)],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+        decompress_zstd(compressed, unpacked, zstd)
         with tarfile.open(unpacked) as tar:tar.extractall(metadata,filter='data')
         recipe=metadata/'info/recipe'
         if not recipe.is_dir():raise RuntimeError(f'No source recipe in {archive}')

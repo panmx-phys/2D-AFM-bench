@@ -8,6 +8,8 @@ from pathlib import Path
 import argparse
 import json
 import hashlib
+import gzip
+import os
 import subprocess
 import tarfile
 
@@ -21,6 +23,25 @@ def public_tar_metadata(member):
     for key in ('uid', 'gid', 'uname', 'gname'):
         member.pax_headers.pop(key, None)
     return member
+
+
+def deterministic_archive(destination, entries, epoch):
+    """Stable order, owner, modes and timestamps; retain bundle symlinks."""
+    with Path(destination).open('wb') as raw:
+        with gzip.GzipFile(filename='', mode='wb', fileobj=raw, mtime=epoch) as compressed:
+            with tarfile.open(fileobj=compressed, mode='w', format=tarfile.PAX_FORMAT) as archive:
+                for path, name in sorted(entries, key=lambda item: item[1]):
+                    member = public_tar_metadata(archive.gettarinfo(path, arcname=name))
+                    member.mtime = epoch
+                    member.pax_headers = {}
+                    member.mode = 0o755 if member.isdir() or member.mode & 0o111 else 0o644
+                    if member.issym():
+                        member.mode = 0o777
+                    if member.isfile():
+                        with Path(path).open('rb') as content:
+                            archive.addfile(member, content)
+                    else:
+                        archive.addfile(member)
 
 
 def create_source_release(destination, native_sources=None):
@@ -59,11 +80,12 @@ def create_source_release(destination, native_sources=None):
             raise RuntimeError('Stage release source before packaging: ' + essential)
     destination = Path(destination).resolve()
     destination.parent.mkdir(parents=True, exist_ok=True)
-    with tarfile.open(destination, 'w:gz') as archive:
-        for path in files:
-            archive.add(path, arcname='AFM-Workbench/'+str(path.relative_to(ROOT)),
-                        recursive=False, filter=public_tar_metadata)
-        archive.add(sources, arcname='AFM-Workbench/native-corresponding-source', filter=public_tar_metadata)
+    epoch = int(os.environ.get('SOURCE_DATE_EPOCH') or subprocess.check_output(
+        ['git', '-C', str(ROOT), 'show', '-s', '--format=%ct', 'HEAD'], text=True).strip())
+    entries = [(path, 'AFM-Workbench/'+path.relative_to(ROOT).as_posix()) for path in files]
+    entries += [(path, 'AFM-Workbench/native-corresponding-source/'+path.relative_to(sources).as_posix())
+                for path in sources.rglob('*')]
+    deterministic_archive(destination, entries, epoch)
     return destination
 
 

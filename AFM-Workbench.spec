@@ -1,10 +1,12 @@
 # Build on the target operating system. No experimental data are bundled.
 from pathlib import Path
 import sys
+import ast
+import os
 
 root = Path(SPECPATH)
 native = root / 'afm_workbench' / '_native'
-native_binaries = [(str(path), 'afm_workbench/_native') for path in native.iterdir()
+native_binaries = [(str(path), 'afm_workbench/_native') for path in sorted(native.iterdir())
                    if path.suffix in {'.dylib', '.so', '.dll'}]
 if not any('afm_gwyddion' in path for path, _ in native_binaries):
     raise RuntimeError('Build the native Gwyddion backend before packaging; see native/README.md.')
@@ -30,11 +32,25 @@ from PyInstaller.building.utils import format_binaries_and_datas
 notices = collect_notices([*a.pure, *a.binaries, *a.scripts], root,
                           root / 'build' / 'python-notices')
 a.datas += [(dest, source, 'DATA') for dest, source in format_binaries_and_datas(notices)]
+if os.environ.get('AFM_RUNTIME_NOTICES_DIR'):
+    runtime_notices = Path(os.environ['AFM_RUNTIME_NOTICES_DIR'])
+    if not (runtime_notices / 'licenses/LICENSE.cpython.txt').is_file():
+        raise RuntimeError('Missing portable Python dependency notices.')
+    a.datas += [(dest, source, 'DATA') for dest, source in format_binaries_and_datas(
+        [(str(runtime_notices), 'licenses/python/runtime-build')])]
 pyz = PYZ(a.pure)
 exe = EXE(pyz, a.scripts, [], exclude_binaries=True, name='AFM Workbench',
           debug=False, bootloader_ignore_signals=False, strip=False, upx=False,
           console=False, disable_windowed_traceback=False)
 coll = COLLECT(exe, a.binaries, a.datas, strip=False, upx=False, name='AFM Workbench')
 if sys.platform == 'darwin':
+    version = next(ast.literal_eval(node.value) for node in ast.parse(
+        (root / 'afm_workbench' / '__init__.py').read_text()).body
+        if isinstance(node, ast.Assign) and any(isinstance(t, ast.Name) and t.id == '__version__'
+                                               for t in node.targets))
     app = BUNDLE(coll, name='AFM Workbench.app', bundle_identifier='org.afmworkbench.desktop',
-                 info_plist={'NSHighResolutionCapable': True, 'CFBundleShortVersionString': '0.1.0'})
+                 version=version,
+                 info_plist={'NSHighResolutionCapable': True, 'CFBundleShortVersionString': version,
+                             'CFBundleVersion': version,
+                             **({'LSMinimumSystemVersion': os.environ['MACOSX_DEPLOYMENT_TARGET']}
+                                if os.environ.get('MACOSX_DEPLOYMENT_TARGET') else {})})

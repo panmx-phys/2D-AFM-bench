@@ -1,0 +1,19 @@
+{
+  "python": "3.12.16",
+  "bootstrap_python": "3.12.10",
+  "python_distribution": {
+    "filename": "cpython-3.12.16-20261110-macos-arm64.tar.gz",
+    "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20261110/cpython-3.12.16%2B20261110-aarch64-apple-darwin-install_only.tar.gz",
+    "sha256": "e956e60bc9465d577ef8062059aa05cd3a2665b4b8678a2ed24e432368330b8f"
+  },
+  "python_build_metadata": {
+    "filename": "cpython-3.12.16-20261110-build-metadata.tar.zst",
+    "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20261110/cpython-3.12.16%2B20261110-aarch64-apple-darwin-pgo%2Blto-full.tar.zst",
+    "sha256": "4da072af9dbbc2557d3aabf51db553a19694f6ac61b5b7169749e4acfa5a052d"
+  },
+  "machine": "arm64",
+  "runner": "macos-15",
+  "deployment_target": "14.0",
+  "native_cflags": "-O2 -fPIC -march=armv8-a",
+  "python_hash_seed": "0"
+}

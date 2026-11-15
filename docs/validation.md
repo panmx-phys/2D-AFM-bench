@@ -2,6 +2,19 @@
 
 Use the [test catalog and focused workflow](testing.md) to choose current checks. The dated records below are historical evidence, not a requirement to rerun every check after each edit. Six preview-era browser scripts are cataloged as legacy; their older passes do not describe the current direct-save interface.
 
+## Reproducible Mac release recipe, 2026-11-14
+
+Implemented the [pinned Apple Silicon recipe and tag-triggered draft workflow](publishing.md#reproducible-apple-silicon-mac-candidate). Executed on the local macOS arm64 host; this does not establish clean-machine or macOS 14 acceptance.
+
+- Downloaded and verified the pinned portable CPython 3.12.16 archive, Python locks, native dependency packages, source archives and runtime notices. The recipe recreated its interpreter, venv, dependency prefix and native build. An offline rebuild succeeded using only those cached inputs; Homebrew Python/libraries were not bundled.
+- All **153 Python tests passed**, with no failures or skips. Eight new release tests cover tag/version/clean-tree gates, source/runtime version agreement, archive determinism and symlinks, checksum rejection, impact selection, exact locks, report privacy and host-library/deployment inspection.
+- The full active catalog passed against the rebuilt executable: **seven runtime/browser/native-renderer checks**, including canvas, fluidity, processing latency, folder management/drop and sample map. The local report is `.test-artifacts/runs/20261115T003815.184159Z/report.json`. Six legacy browser scripts and the maintenance reference generator remain inactive; no inactive check is claimed to pass.
+- The actual packaged desktop executable opened a native window and rendered its two-acquisition synthetic session. The temporary test app was then closed. This startup observation supplements the renderer smokes, which use development pywebview against the packaged HTTP service.
+- Strict ad-hoc signature verification passed. Inspection of 63 Mach-O files found arm64 support, no absolute non-system library dependencies and a maximum deployment floor of macOS 14.0.0. Original portable-Python dependency notices/build metadata and native sources/recipes/licenses were present.
+- A disposable standalone checkout, with a local `v0.1.0` fixture tag and a clean working tree, completed the exact `--tag v0.1.0 --offline` path, including all 153 Python tests and the packaged runtime smoke. Its source archive contained the workflow/locks/recipe and corresponding sources, normalized owner metadata, and no local test catalogs, environments or private fixtures. This fixture tag was never pushed.
+- Two fresh native/application builds from the same input bytes, paths and toolchain produced byte-identical application and corresponding-source archives. The comparison is recorded in `.test-artifacts/reproducibility.json`: application SHA-256 `4cc6ad189bd85e874a3071673c3bab9d505958fb66014068397d9b3e54b0d3e3`, source SHA-256 `d19203e1b08785d540af2f26c09fa8be9a6581dc4b3e3cc8fe7c51cf81f501a2`. These are comparison-run hashes; subsequent evidence-documentation updates change the final source archive's checksum. Use its adjacent `SHA256SUMS` for the delivered files. Cross-host/compiler/SDK byte identity remains unproven.
+- The workflow passed actionlint 1.7.12 and Git whitespace checks. No repository tag was pushed, no remote GitHub workflow was executed, and no GitHub release was created during this implementation. The workflow creates drafts; Developer ID signing, notarization, clean-Mac acceptance, Intel and Windows remain unvalidated.
+
 ## Test catalog and focused runner, 2026-11-14
 
 Executed locally on macOS arm64. This change consolidates test selection and reporting; it does not change scientific algorithms or product behavior.

@@ -10,10 +10,13 @@ import sys
 from source_release import create_source_release
 
 root = Path(__file__).resolve().parents[1]
+os.environ.setdefault('PYTHONHASHSEED', '0')
+os.environ.setdefault('SOURCE_DATE_EPOCH', subprocess.check_output(
+    ['git', 'show', '-s', '--format=%ct', 'HEAD'], cwd=root, text=True).strip())
 # Fail before producing a distributable binary if corresponding sources have
 # not been collected for this build's dependency manifest.
 create_source_release(root / 'dist' / 'AFM-Workbench-source.tar.gz')
-subprocess.run([sys.executable, '-m', 'PyInstaller', '--noconfirm', str(root / 'AFM-Workbench.spec')], cwd=root, check=True)
+subprocess.run([sys.executable, '-m', 'PyInstaller', '--clean', '--noconfirm', str(root / 'AFM-Workbench.spec')], cwd=root, check=True)
 if sys.platform == 'darwin':
     app = root / 'dist' / 'AFM Workbench.app'
     # Finder/file-provider metadata on generated files can prevent codesigning.
