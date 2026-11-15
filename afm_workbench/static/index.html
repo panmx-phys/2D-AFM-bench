@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="afm-token" content="__AFM_TOKEN__">
+  <meta name="color-scheme" content="light">
+  <title>AFM Workbench</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/display-controls.css">
+  <link rel="stylesheet" href="/mask-controls.css">
+  <script src="/display-controls.js" defer></script>
+  <script src="/mask-controls.js" defer></script>
+  <script src="/canvas-controls.js" defer></script>
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <div id="app"><div class="initial-loading"><span class="spinner"></span>Opening AFM Workbench…</div></div>
+  <div id="modal-root"></div>
+  <div id="folder-drop" hidden role="status" aria-live="polite"><div><strong>Drop a folder to import a session</strong><span>One folder at a time · Original files are preserved</span></div></div>
+  <div id="toast" role="status" aria-live="polite"></div>
+</body>
+</html>

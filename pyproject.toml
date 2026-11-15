@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=77.0.3", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "afm-workbench"
+version = "0.1.0"
+description = "A local desktop library and reproducible analysis workbench for AFM sessions"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "GPL-2.0-or-later"
+dependencies = ["numpy>=1.26,<3", "Pillow>=10.4,<14"]
+
+[project.optional-dependencies]
+desktop = ["pywebview>=6.2,<7"]
+build = ["pyinstaller>=6.16,<7"]
+
+[project.scripts]
+afm-workbench = "afm_workbench.__main__:main"
+
+[tool.setuptools.packages.find]
+include = ["afm_workbench*"]
+
+[tool.setuptools.package-data]
+afm_workbench = ["static/*", "_native/*.dylib", "_native/*.so", "_native/*.dll", "_native/*.json", "_native/licenses/*", "_native/licenses/**/*"]

@@ -1,0 +1,481 @@
+{
+  "version": 1,
+  "no_test_changes": [
+    "*.md",
+    "docs/*",
+    "licenses/MIT-legacy.txt",
+    "LICENSE",
+    ".gitignore",
+    ".DS_Store"
+  ],
+  "checks": [
+    {
+      "id": "importers",
+      "path": "tests/test_importers.py",
+      "kind": "unit",
+      "status": "active",
+      "groups": [
+        "import"
+      ],
+      "purpose": "Park headers, calibration, units, orientation, missing pixels and invalid files",
+      "affects": []
+    },
+    {
+      "id": "science",
+      "path": "tests/test_science.py",
+      "kind": "unit",
+      "status": "active",
+      "groups": [
+        "science"
+      ],
+      "purpose": "Statistics, profiles, step heights, reference masks, original immutability and replay",
+      "affects": []
+    },
+    {
+      "id": "terraces",
+      "path": "tests/test_processing.py",
+      "kind": "unit",
+      "status": "active",
+      "groups": [
+        "science"
+      ],
+      "purpose": "Terrace plane fits, scan axes, rejected references and preserved steps",
+      "affects": []
+    },
+    {
+      "id": "auto-processing",
+      "path": "tests/test_auto_processing.py",
+      "kind": "unit",
+      "status": "active",
+      "groups": [
+        "science"
+      ],
+      "purpose": "Automatic terrace alignment, fit rejection and repeatable processing",
+      "affects": []
+    },
+    {
+      "id": "characterization",
+      "path": "tests/test_characterization.py",
+      "kind": "unit",
+      "status": "active",
+      "groups": [
+        "science"
+      ],
+      "purpose": "Automatic/manual three-point leveling, reference gates, masks and service/MCP replay",
+      "affects": []
+    },
+    {
+      "id": "line-alignment",
+      "path": "tests/test_line_alignment.py",
+      "kind": "unit",
+      "status": "active",
+      "groups": [
+        "native"
+      ],
+      "purpose": "Alignment methods on both axes against recorded Gwyddion fixtures",
+      "affects": [
+        "native/*",
+        "scripts/build_gwyddion.py",
+        "tests/fixtures/*",
+        "afm_workbench/_native/*"
+      ]
+    },
+    {
+      "id": "native-backend",
+      "path": "tests/test_native_backend.py",
+      "kind": "unit",
+      "status": "active",
+      "groups": [
+        "native"
+      ],
+      "purpose": "Native ABI/version, C execution, reference outputs and missing-library failure",
+      "affects": [
+        "native/*",
+        "scripts/build_gwyddion.py",
+        "tests/fixtures/*",
+        "afm_workbench/_native/*"
+      ]
+    },
+    {
+      "id": "gwyddion-processing",
+      "path": "tests/test_gwyddion_processing.py",
+      "kind": "unit",
+      "status": "active",
+      "groups": [
+        "native"
+      ],
+      "purpose": "Native corrections, masks, recipe history and service/MCP parity",
+      "affects": [
+        "native/*",
+        "scripts/build_gwyddion.py",
+        "tests/fixtures/*",
+        "afm_workbench/_native/*"
+      ]
+    },
+    {
+      "id": "gwyddion-analysis",
+      "path": "tests/test_gwyddion_analysis.py",
+      "kind": "unit",
+      "status": "active",
+      "groups": [
+        "native"
+      ],
+      "purpose": "Native moments, profiles and statistics definitions",
+      "affects": [
+        "native/*",
+        "scripts/build_gwyddion.py",
+        "tests/fixtures/*",
+        "afm_workbench/_native/*"
+      ]
+    },
+    {
+      "id": "service",
+      "path": "tests/test_service.py",
+      "kind": "unit",
+      "status": "active",
+      "groups": [
+        "service"
+      ],
+      "purpose": "Session import/update/archive/migrations, exports, HTTP access and MCP parity",
+      "affects": []
+    },
+    {
+      "id": "masks-display",
+      "path": "tests/test_masks_display.py",
+      "kind": "unit",
+      "status": "active",
+      "groups": [
+        "display"
+      ],
+      "purpose": "Persistent masks, mask snapshots, display ranges and numerical invariance",
+      "affects": []
+    },
+    {
+      "id": "performance",
+      "path": "tests/test_performance.py",
+      "kind": "unit",
+      "status": "active",
+      "groups": [
+        "performance"
+      ],
+      "purpose": "Cache invalidation, bounded memory, compact transport and unchanged results",
+      "affects": []
+    },
+    {
+      "id": "desktop-drop",
+      "path": "tests/test_desktop_drop.py",
+      "kind": "unit",
+      "status": "active",
+      "groups": [
+        "folders"
+      ],
+      "purpose": "Folder path bridge, JSON encoding and invalid-drop rejection",
+      "affects": []
+    },
+    {
+      "id": "test-runner",
+      "path": "tests/test_test_runner.py",
+      "kind": "unit",
+      "status": "active",
+      "groups": [
+        "tooling"
+      ],
+      "purpose": "Catalog completeness, impact selection, Git changes and failure reporting",
+      "affects": [
+        "tests/catalog.json",
+        "scripts/test.py",
+        ".github/workflows/check.yml"
+      ]
+    },
+    {
+      "id": "packaging",
+      "path": "tests/test_packaging.py",
+      "kind": "unit",
+      "status": "active",
+      "groups": [
+        "tooling"
+      ],
+      "purpose": "Public source archive owner privacy and dependency notice collection gates",
+      "affects": [
+        "scripts/package_notices.py",
+        "scripts/source_release.py",
+        "AFM-Workbench.spec",
+        "licenses/python-fallbacks/*"
+      ]
+    },
+    {
+      "id": "runtime",
+      "path": "scripts/runtime-smoke.py",
+      "kind": "runtime",
+      "status": "active",
+      "groups": [
+        "service"
+      ],
+      "purpose": "HTTP/assets, native operation, save/undo and raw immutability",
+      "affects": [
+        "afm_workbench/service.py",
+        "afm_workbench/server.py",
+        "afm_workbench/__main__.py",
+        "afm_workbench/static/app.js",
+        "afm_workbench/static/style.css",
+        "afm_workbench/static/index.html",
+        "scripts/build.py",
+        "scripts/source_release.py",
+        "scripts/desktop_entry.py",
+        "AFM-Workbench.spec",
+        "native/*",
+        "scripts/build_gwyddion.py",
+        "afm_workbench/_native/*",
+        "afm_workbench/__init__.py",
+        "afm_workbench/auto_processing.py",
+        "afm_workbench/cache.py",
+        "afm_workbench/characterization.py",
+        "afm_workbench/importers.py",
+        "afm_workbench/leveling.py",
+        "afm_workbench/line_alignment.py",
+        "afm_workbench/mcp.py",
+        "afm_workbench/native_backend.py",
+        "afm_workbench/science.py",
+        "afm_workbench/view_state.py",
+        "scripts/package_notices.py"
+      ],
+      "args": []
+    },
+    {
+      "id": "map-ui",
+      "path": "scripts/map-smoke.cjs",
+      "kind": "browser",
+      "status": "active",
+      "groups": [
+        "map"
+      ],
+      "purpose": "Overlapping/rotated footprints, selection, filtering and compact layout",
+      "affects": [
+        "afm_workbench/service.py",
+        "afm_workbench/server.py",
+        "afm_workbench/__main__.py",
+        "afm_workbench/static/app.js",
+        "afm_workbench/static/style.css",
+        "afm_workbench/static/index.html",
+        "afm_workbench/importers.py"
+      ],
+      "args": []
+    },
+    {
+      "id": "folders-ui",
+      "path": "scripts/folders-smoke.cjs",
+      "kind": "browser",
+      "status": "active",
+      "groups": [
+        "folders"
+      ],
+      "purpose": "Import/update, source history, reconnect, notes, archive/restore and compact layout",
+      "affects": [
+        "afm_workbench/service.py",
+        "afm_workbench/server.py",
+        "afm_workbench/__main__.py",
+        "afm_workbench/static/app.js",
+        "afm_workbench/static/style.css",
+        "afm_workbench/static/index.html",
+        "afm_workbench/importers.py",
+        "tests/test_importers.py"
+      ],
+      "args": []
+    },
+    {
+      "id": "canvas",
+      "path": "scripts/canvas-smoke.py",
+      "kind": "desktop",
+      "status": "active",
+      "groups": [
+        "display"
+      ],
+      "purpose": "Native renderer: selections, contrast, zoom/pan, cancellation, overlays and compact layout",
+      "affects": [
+        "afm_workbench/service.py",
+        "afm_workbench/server.py",
+        "afm_workbench/__main__.py",
+        "afm_workbench/static/app.js",
+        "afm_workbench/static/style.css",
+        "afm_workbench/static/index.html",
+        "afm_workbench/static/*controls*",
+        "afm_workbench/view_state.py"
+      ],
+      "args": []
+    },
+    {
+      "id": "fluidity",
+      "path": "scripts/fluidity-smoke.py",
+      "kind": "desktop",
+      "status": "active",
+      "groups": [
+        "performance"
+      ],
+      "purpose": "Native renderer: bounded per-frame work, final endpoints, brush samples and unchanged data",
+      "affects": [
+        "afm_workbench/service.py",
+        "afm_workbench/server.py",
+        "afm_workbench/__main__.py",
+        "afm_workbench/static/app.js",
+        "afm_workbench/static/style.css",
+        "afm_workbench/static/index.html",
+        "afm_workbench/static/*controls*",
+        "afm_workbench/cache.py"
+      ],
+      "args": [
+        "--expect-coalesced"
+      ]
+    },
+    {
+      "id": "processing-latency",
+      "path": "scripts/performance-smoke.py",
+      "kind": "desktop",
+      "status": "active",
+      "groups": [
+        "performance"
+      ],
+      "purpose": "Native renderer: saved corrections, undo, transport, colors and measured latency",
+      "affects": [
+        "afm_workbench/service.py",
+        "afm_workbench/server.py",
+        "afm_workbench/__main__.py",
+        "afm_workbench/static/app.js",
+        "afm_workbench/static/style.css",
+        "afm_workbench/static/index.html",
+        "afm_workbench/static/*controls*",
+        "afm_workbench/cache.py",
+        "afm_workbench/science.py"
+      ],
+      "args": [
+        "--expect-compact"
+      ]
+    },
+    {
+      "id": "folder-drop-ui",
+      "path": "scripts/folder-drop-smoke.py",
+      "kind": "desktop",
+      "status": "active",
+      "groups": [
+        "folders"
+      ],
+      "purpose": "Native DOM drop bridge with synthetic paths; does not test physical OS drops",
+      "affects": [
+        "afm_workbench/service.py",
+        "afm_workbench/server.py",
+        "afm_workbench/__main__.py",
+        "afm_workbench/static/app.js",
+        "afm_workbench/static/style.css",
+        "afm_workbench/static/index.html"
+      ],
+      "args": []
+    },
+    {
+      "id": "legacy-ui",
+      "path": "scripts/ui-smoke.cjs",
+      "kind": "browser",
+      "status": "legacy",
+      "groups": [
+        "browsing"
+      ],
+      "purpose": "Height/channel grouping, comparison, profiles, export and old preview decisions",
+      "affects": [
+        "afm_workbench/static/*"
+      ],
+      "note": "Static audit: expects removed Keep/Discard preview controls. Preserved for migration; excluded from active runs. Current unit/native-renderer checks cover parts, not all, of this workflow."
+    },
+    {
+      "id": "legacy-processing",
+      "path": "scripts/processing-smoke.cjs",
+      "kind": "browser",
+      "status": "legacy",
+      "groups": [
+        "science"
+      ],
+      "purpose": "Terrace processing and old preview isolation",
+      "affects": [
+        "afm_workbench/static/*",
+        "tests/test_importers.py"
+      ],
+      "note": "Static audit: expects removed Keep/Discard preview controls. Preserved for migration; excluded from active runs. Current unit/native-renderer checks cover parts, not all, of this workflow."
+    },
+    {
+      "id": "legacy-gwyddion",
+      "path": "scripts/gwyddion-smoke.cjs",
+      "kind": "browser",
+      "status": "legacy",
+      "groups": [
+        "native"
+      ],
+      "purpose": "Native alignment/polynomial controls and old preview decisions",
+      "affects": [
+        "afm_workbench/static/*"
+      ],
+      "note": "Static audit: expects removed Keep/Discard preview controls. Preserved for migration; excluded from active runs. Current unit/native-renderer checks cover parts, not all, of this workflow."
+    },
+    {
+      "id": "legacy-masks",
+      "path": "scripts/masking-display-smoke.cjs",
+      "kind": "browser",
+      "status": "legacy",
+      "groups": [
+        "display"
+      ],
+      "purpose": "Mask editing, full display controls and old preview snapshots",
+      "affects": [
+        "afm_workbench/static/*"
+      ],
+      "note": "Static audit: expects removed Keep/Discard preview controls. Preserved for migration; excluded from active runs. Current unit/native-renderer checks cover parts, not all, of this workflow."
+    },
+    {
+      "id": "legacy-inspector",
+      "path": "scripts/inspector-smoke.cjs",
+      "kind": "browser",
+      "status": "legacy",
+      "groups": [
+        "display"
+      ],
+      "purpose": "Inspector keyboard/precision/layout and old preview decisions",
+      "affects": [
+        "afm_workbench/static/*"
+      ],
+      "note": "Static audit: expects removed Keep/Discard preview controls. Preserved for migration; excluded from active runs. Current unit/native-renderer checks cover parts, not all, of this workflow."
+    },
+    {
+      "id": "legacy-characterization",
+      "path": "scripts/characterization-smoke.cjs",
+      "kind": "browser",
+      "status": "legacy",
+      "groups": [
+        "science"
+      ],
+      "purpose": "Automatic/manual characterization and old preview decisions",
+      "affects": [
+        "afm_workbench/static/*",
+        "tests/test_importers.py"
+      ],
+      "note": "Static audit: expects removed Keep/Discard preview controls. Preserved for migration; excluded from active runs. Current unit/native-renderer checks cover parts, not all, of this workflow."
+    },
+    {
+      "id": "reference-fixtures",
+      "path": "scripts/check_gwyddion.py",
+      "kind": "reference",
+      "status": "maintenance",
+      "groups": [
+        "native"
+      ],
+      "purpose": "Regenerate reference JSON by compiling selected upstream C routines",
+      "affects": [],
+      "note": "Manual generator, not a pass/fail test: python scripts/check_gwyddion.py /path/to/gwyddion-2.71 /tmp/gwyddion-reference.json; review differences before updating the committed fixture."
+    }
+  ],
+  "dependency_inputs": [
+    {
+      "module": "afm_workbench/native_backend.py",
+      "patterns": [
+        "native/*",
+        "scripts/build_gwyddion.py",
+        "afm_workbench/_native/*"
+      ]
+    }
+  ]
+}

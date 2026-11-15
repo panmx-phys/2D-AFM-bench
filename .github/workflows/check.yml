@@ -1,0 +1,37 @@
+name: Workbench checks
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - if: runner.os == 'macOS'
+        run: brew install glib fftw pkg-config
+      - if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libglib2.0-dev libfftw3-dev pkg-config
+      - run: python scripts/build_gwyddion.py --download
+      - run: python -m pip install .
+      - name: Focused Python checks for pull requests
+        if: github.event_name == 'pull_request'
+        env:
+          AFM_TEST_BASE: ${{ github.event.pull_request.base.sha }}
+        run: python scripts/test.py --changed --base "$AFM_TEST_BASE" --kind unit
+      - name: Full Python checks for pushes and manual runs
+        if: github.event_name != 'pull_request'
+        run: python scripts/test.py --full --kind unit
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-${{ matrix.os }}
+          path: .test-artifacts/runs/
+          include-hidden-files: true

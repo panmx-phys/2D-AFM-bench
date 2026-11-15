@@ -1,0 +1,89 @@
+{
+  "purpose": "Dependency provenance for the executed Mac arm64 development build; generic builds use supplied GLib/FFTW packages.",
+  "packages": [
+    {
+      "name": "libffi",
+      "version": "3.5.2",
+      "build": "he5f378a_0",
+      "url": "https://conda.anaconda.org/conda-forge/osx-arm64/libffi-3.5.2-he5f378a_0.conda",
+      "sha256": "9b8acdf42df61b7bfe8bdc545c016c29e61985e79748c64ad66df47dbc2e295f",
+      "license": "MIT",
+      "sources": [
+        {
+          "filename": "libffi-3.5.2.tar.gz",
+          "url": "https://github.com/libffi/libffi/releases/download/v3.5.2/libffi-3.5.2.tar.gz",
+          "sha256": "f3a3082a23b37c293a4fcd1053147b371f2ff91fa7ea1b2a52e335676bac82dc"
+        }
+      ]
+    },
+    {
+      "name": "libintl",
+      "version": "0.25.1",
+      "build": "h493aca8_0",
+      "url": "https://conda.anaconda.org/conda-forge/osx-arm64/libintl-0.25.1-h493aca8_0.conda",
+      "sha256": "99d2cebcd8f84961b86784451b010f5f0a795ed1c08f1e7c76fbb3c22abf021a",
+      "license": "LGPL-2.1-or-later",
+      "sources": [
+        {
+          "filename": "gettext-0.25.1.tar.xz",
+          "url": "https://ftp.gnu.org/pub/gnu/gettext/gettext-0.25.1.tar.xz",
+          "sha256": "2c8294be238f03fb3fa65b8051057e5b68167f3e21f08008070cf40a7051ba22"
+        }
+      ]
+    },
+    {
+      "name": "pcre2",
+      "version": "10.47",
+      "build": "h30297fc_0",
+      "url": "https://conda.anaconda.org/conda-forge/osx-arm64/pcre2-10.47-h30297fc_0.conda",
+      "sha256": "5e2e443f796f2fd92adf7978286a525fb768c34e12b1ee9ded4000a41b2894ba",
+      "license": "BSD-3-Clause",
+      "sources": [
+        {
+          "filename": "pcre2-10.47.tar.gz",
+          "url": "https://github.com/PCRE2Project/pcre2/archive/refs/tags/pcre2-10.47.tar.gz",
+          "sha256": "409c443549b13b216da40049850a32f3e6c57d4224ab11553ab5a786878a158e"
+        },
+        {
+          "filename": "sljit-45f910b78c6605ebf5b53d3ec7cb00f2312fe417.tar.gz",
+          "url": "https://github.com/zherczeg/sljit/archive/45f910b78c6605ebf5b53d3ec7cb00f2312fe417.tar.gz",
+          "sha256": "ea5a6fb45e050f813f070ecaa098fe0389068beea61ac7dce5410a0c642ccfa3"
+        }
+      ]
+    },
+    {
+      "name": "libglib",
+      "version": "2.88.1",
+      "build": "ha08bb59_2",
+      "url": "https://conda.anaconda.org/conda-forge/osx-arm64/libglib-2.88.1-ha08bb59_2.conda",
+      "sha256": "3b32a7a710132d509f2ea38b2f0384414c863533e0fc7ac71b6a0763e4c67424",
+      "license": "LGPL-2.1-or-later",
+      "sources": [
+        {
+          "filename": "glib-2.88.1.tar.xz",
+          "url": "https://download.gnome.org/sources/glib/2.88/glib-2.88.1.tar.xz",
+          "sha256": "51ab804c56f6eab3e5045c774d1290ac5e4c923d4f9a3d8e33123bee45c1840e"
+        }
+      ]
+    },
+    {
+      "name": "libiconv",
+      "version": "1.18",
+      "build": "h23cfdf5_2",
+      "url": "https://conda.anaconda.org/conda-forge/osx-arm64/libiconv-1.18-h23cfdf5_2.conda",
+      "sha256": "de0336e800b2af9a40bdd694b03870ac4a848161b35c8a2325704f123f185f03",
+      "license": "LGPL-2.1-only",
+      "sources": [
+        {
+          "filename": "libiconv-1.18.tar.gz",
+          "url": "https://ftp.gnu.org/pub/gnu/libiconv/libiconv-1.18.tar.gz",
+          "sha256": "3b08f5f4f9b4eb82f151a7040bfd6fe6c6fb922efe4b1659c66ea933276965e8"
+        }
+      ]
+    }
+  ],
+  "glib_development_header": {
+    "url": "https://conda.anaconda.org/conda-forge/osx-arm64/glib-2.88.1-h92d5a4f_2.conda",
+    "sha256": "e6804164a3d771d369d97fd08a2db739321d452c9ffa6803f9bbf309aa1f4dfe"
+  }
+}

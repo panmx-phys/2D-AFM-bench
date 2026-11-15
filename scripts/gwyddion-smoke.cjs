@@ -1,0 +1,111 @@
+/* Run only against a disposable local workspace; this uses the built-in synthetic demo.
+   AFM_PLAYWRIGHT_MODULE=/path/to/playwright node scripts/gwyddion-smoke.cjs URL [browser executable]
+   No experimental data or production catalog is required. */
+const {chromium}=require(process.env.AFM_PLAYWRIGHT_MODULE||'playwright');
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const path=require('node:path');
+const output=path.resolve('.test-artifacts');
+(async()=>{
+  let browser;
+  try{
+    browser=await chromium.launch({headless:true,...(process.argv[3]?{executablePath:process.argv[3]}:{})});
+    const page=await browser.newPage({viewport:{width:1280,height:900},deviceScaleFactor:1});
+    await page.addInitScript(() => localStorage.setItem('afm-auto-prepare', 'false')); // Exercise explicit corrections; automatic preparation has its own smoke test.
+    const errors=[];let expectedApiFailure=false;page.on('pageerror',e=>errors.push(e.message));
+    page.on('console',msg=>{if(msg.type()==='error'&&!expectedApiFailure)errors.push(msg.text());});
+    await page.goto(process.argv[2]||'http://127.0.0.1:8777');
+    await page.waitForSelector('.session-heading,.empty-state');
+    const session=await page.evaluate(async()=>{const demo=await api('demo');await openSession(demo.id);return demo;});
+    assert.equal(session.synthetic,true,'mutations are restricted to synthetic demo data');
+    const scan=session.scans.find(s=>s.channel==='Z Height'&&s.direction==='Forward');
+    assert(scan,'synthetic forward height scan exists');
+    await page.evaluate(id=>openScan(id),scan.id);
+    const original=await page.evaluate(async()=>({saved:await api('scan',{id:state.scan.id}),raw:await api('scan',{id:state.scan.id,raw:true})}));
+    const idle=()=>page.waitForFunction(()=>!state.loading);
+    const discard=async()=>{await page.getByRole('button',{name:'Discard',exact:true}).click();await page.waitForFunction(()=>!state.loading&&!state.pending);};
+    const preview=async name=>{await page.getByRole('button',{name,exact:true}).click();try{await page.getByRole('button',{name:'Keep result',exact:true}).waitFor({timeout:10000});}catch(error){throw new Error(`${name}: ${await page.locator('#toast').innerText()}`,{cause:error});}await idle();};
+    const fill=async(id,value)=>{await page.locator('#'+id).fill(String(value));await page.locator('#'+id).blur();};
+    const tab=async name=>{await page.locator('#inspector-tab-'+name).click();await page.locator('#inspector-panel-'+name).waitFor({state:'visible'});};
+    const openDetails=async id=>{const details=page.locator('#'+id);if(!await details.evaluate(el=>el.open))await details.locator('summary').click();};
+    const openManual=()=>openDetails('more-corrections');
+    const draw=async(tool,start,end)=>{
+      await page.locator('.canvas-toolbar').getByRole('button',{name:tool,exact:true}).click();
+      const box=await page.locator('#draw-overlay').boundingBox();assert(box,'drawing surface exists');
+      await page.mouse.move(box.x+box.width*start[0],box.y+box.height*start[1]);await page.mouse.down();
+      await page.mouse.move(box.x+box.width*end[0],box.y+box.height*end[1],{steps:8});await page.mouse.up();
+      await page.waitForFunction(tool=>!state.loading&&(tool==='Area'?!!state.area:!!state.profile),tool);
+    };
+    await tab('prepare');
+    assert.equal(await page.locator('#processing-axis').inputValue(),'auto');
+    await openDetails('more-corrections');
+    expectedApiFailure=true;
+    await page.getByRole('button',{name:'Align scan lines',exact:true}).click();
+    await page.waitForFunction(()=>!state.loading&&document.querySelector('#toast').textContent.includes('axis is not established'));
+    expectedApiFailure=false;
+    assert.equal(await page.evaluate(()=>state.pending),null,'automatic axis fails explicitly when demo metadata does not establish it');
+    const methods=['median','mean','median_difference','modus','matching','polynomial','trimmed_mean','trimmed_difference','facet_tilt'];
+    assert.deepEqual(await page.locator('#line-method option').evaluateAll(options=>options.map(o=>o.value)),methods);
+    for(const [index,method] of methods.entries()){
+      console.log('Checking alignment:',method);
+      await page.locator('#line-method').selectOption(method);
+      const axis=index%2?'columns':'rows';
+      await page.locator('#processing-axis').selectOption(axis);
+      if(method==='polynomial')await fill('line-degree',2);
+      if(method.startsWith('trimmed'))await fill('line-trim',15);
+      await preview('Align scan lines');
+      const current=await page.evaluate(()=>({op:state.pending.at(-1),history:state.scan.history.at(-1)}));
+      assert.equal(current.op.method,method);
+      assert.equal(current.history.model.method,method);
+      assert.equal(current.history.model.axis,axis==='auto'?'rows':axis);
+      if(method==='polynomial')assert.equal(current.op.degree,2);
+      if(method.startsWith('trimmed'))assert.equal(current.op.trim_fraction,.15);
+      assert.deepEqual(await page.evaluate(async()=> (await api('scan',{id:state.scan.id})).operations),original.saved.operations,'preview leaves saved recipe unchanged');
+      await discard();
+    }
+    await page.locator('#line-method').selectOption('median');
+    await page.locator('#processing-axis').selectOption('rows');
+    await preview('Align scan lines');
+    await page.getByRole('button',{name:'Keep result',exact:true}).click();await idle();
+    assert.equal(await page.evaluate(()=>state.scan.operations.length),original.saved.operations.length+1);
+    await page.reload();await page.waitForSelector('.scan-card');await page.evaluate(id=>openScan(id),scan.id);
+    assert.equal(await page.evaluate(()=>state.scan.operations.at(-1).method),'median','saved method survives reopen');
+    await tab('record');
+    await page.getByRole('button',{name:'Undo last correction',exact:true}).click();await idle();
+    assert.deepEqual(await page.evaluate(()=>state.scan.operations),original.saved.operations,'undo restores saved recipe');
+    assert.deepEqual(await page.evaluate(async()=> (await api('scan',{id:state.scan.id,raw:true})).data),original.raw.data,'original data remains immutable');
+    await tab('prepare');await preview('Subtract reference plane');
+    assert.equal(await page.evaluate(()=>state.pending.at(-1).method),'gwyddion');await discard();
+    await openManual();await page.locator('#polynomial-mode').selectOption('independent');
+    await fill('polynomial-degree-x',2);await fill('polynomial-degree-y',1);
+    await preview('Subtract polynomial background');
+    assert.deepEqual(await page.evaluate(()=>state.pending.at(-1)),{type:'polynomial',mode:'independent',degree_x:2,degree_y:1});await discard();
+    await openManual();await page.locator('#polynomial-mode').selectOption('total');await fill('polynomial-degree',2);
+    await preview('Subtract polynomial background');
+    assert.deepEqual(await page.evaluate(()=>state.pending.at(-1)),{type:'polynomial',mode:'total',degree:2});await discard();
+    await draw('Area',[.25,.25],[.55,.55]);
+    await tab('prepare');await page.locator('#reference-mode').selectOption('exclude');await preview('Subtract reference plane');
+    const ref=await page.evaluate(()=>({op:state.pending.at(-1),reference:state.scan.history.at(-1).reference}));
+    assert.equal(ref.op.masking,'exclude');assert(ref.op.roi,'selected rectangle is recorded');assert.equal(ref.reference.mode,'exclude');await discard();
+    await draw('Profile',[.15,.2],[.8,.75]);
+    const line=await page.evaluate(()=>({selection:state.profile.selection,id:state.profile.id}));
+    await fill('profile-width',3);await page.waitForFunction(id=>!state.loading&&state.profile.id!==id,line.id);
+    let profile=await page.evaluate(()=>state.profile);
+    assert.equal(profile.averaging_width_pixels,3);assert.deepEqual(profile.selection,line.selection);
+    await page.locator('#profile-interpolation').selectOption('nearest');await page.waitForFunction(id=>!state.loading&&state.profile.id!==id,profile.id);
+    profile=await page.evaluate(()=>state.profile);
+    assert.equal(profile.interpolation,'nearest');assert.deepEqual(profile.selection,line.selection);
+    assert.equal(await page.locator('#draw-overlay line').count()>0,true,'profile selection remains drawn');
+    await tab('measure');
+    await page.getByText('More statistics',{exact:true}).click();
+    assert(await page.getByText('Excess kurtosis',{exact:true}).isVisible());
+    fs.mkdirSync(output,{recursive:true});await page.screenshot({path:path.join(output,'gwyddion-controls.png')});
+    await page.setViewportSize({width:900,height:650});
+    await page.waitForFunction(()=>innerWidth===900);
+    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'compact viewport has no horizontal page overflow');
+    const bounds=await page.locator('#height-canvas').boundingBox();assert(bounds&&bounds.width>0&&bounds.height>0,'compact image remains visible');
+    await page.screenshot({path:path.join(output,'gwyddion-controls-compact.png')});
+    assert.deepEqual(errors,[],'no browser errors');
+    console.log('PASS: nine methods, row/column/auto axes, degree/trim, plane datum, polynomial modes, excluded ROI, preview/save/reopen/undo, immutable raw data, profile width/interpolation/selection, statistics, compact viewport.');
+  }finally{if(browser)await browser.close();}
+})().catch(error=>{console.error(error);process.exit(1);});

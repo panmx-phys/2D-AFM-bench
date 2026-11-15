@@ -1,0 +1,46 @@
+.display-controls { min-width: 0; }
+.display-controls .inspector-title { margin-bottom: 9px; }
+.inspector .display-controls label { font-size: 11px; margin-bottom: 0; }
+.inspector .color-map-row { display: grid; grid-template-columns: 64px minmax(0,1fr); gap: 8px; align-items: center; }
+.inspector .color-map-row select { margin: 0; padding: 4px 6px; height: 27px; }
+.color-histogram-wrap { margin: 10px 0 7px; }
+#color-histogram { width: 100%; height: 40px; display: block; overflow: hidden; }
+.histogram-bars { fill: #8d989f; }
+.histogram-clipped { fill: #e8ebee; opacity: .68; }
+.histogram-limit { fill: none; stroke: #465866; stroke-width: 1.3; }
+.histogram-axis { fill: none; stroke: #c2c9ce; stroke-width: 1; }
+.color-histogram-extents { display: flex; justify-content: space-between; gap: 8px; color: #717980; font-size: 9px; margin-top: 0; font-variant-numeric: tabular-nums; }
+.color-histogram-extents span:last-child { text-align: right; }
+.color-range-track { position: relative; height: 20px; margin: -1px 0 0; }
+.color-range-rail { position: absolute; inset: 8px 0; border-radius: 2px; background: linear-gradient(to right, #c8ced2 0 var(--range-low), #647986 var(--range-low) var(--range-high), #c8ced2 var(--range-high) 100%); }
+.inspector .color-range-track input[type=range] { position: absolute; inset: 0; width: 100%; height: 20px; margin: 0; padding: 0; appearance: none; -webkit-appearance: none; background: none; pointer-events: none; outline: none; }
+.color-range-track input[type=range]::-webkit-slider-runnable-track { height: 4px; background: transparent; }
+.color-range-track input[type=range]::-moz-range-track { height: 4px; background: transparent; }
+.color-range-track input[type=range]::-webkit-slider-thumb { pointer-events: auto; appearance: none; -webkit-appearance: none; width: 11px; height: 17px; border: 1px solid #667783; border-radius: 3px; background: #fafbfc; margin-top: -6px; cursor: ew-resize; box-shadow: 0 1px 2px #1e30451c; }
+.color-range-track input[type=range]::-moz-range-thumb { pointer-events: auto; width: 10px; height: 16px; border: 1px solid #667783; border-radius: 3px; background: #fafbfc; cursor: ew-resize; }
+.color-range-track input[type=range]:focus-visible { z-index: 3; }
+.color-range-track input[type=range]:focus-visible::-webkit-slider-thumb { outline: 2px solid #526d80; outline-offset: 2px; }
+.color-range-track input[type=range]:focus-visible::-moz-range-thumb { outline: 2px solid #526d80; outline-offset: 2px; }
+.color-range-track input[type=range]:disabled::-webkit-slider-thumb { cursor: default; border-color: #b8c0c6; background: #e6eaed; }
+.color-range-track input[type=range]:disabled::-moz-range-thumb { cursor: default; border-color: #b8c0c6; background: #e6eaed; }
+.color-limit-fields { position: relative; display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr) auto; gap: 6px; align-items: end; margin-bottom: 8px; }
+.color-limit-fields label { min-width: 0; }
+.color-limit-fields label span { float: right; color: #7b8389; font-size: 10px; }
+.color-limit-fields label .color-exact-value { display: none; position: absolute; z-index: 4; left: 0; right: 0; bottom: calc(100% + 4px); padding: 4px 7px; border: 1px solid #bac4cc; border-radius: 3px; background: #f7f8f9; color: #4e5d67; font-size: 10px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; pointer-events: none; box-shadow: 0 2px 4px #24364618; }
+.color-limit-fields label:focus-within .color-exact-value { display: block; }
+.inspector .color-limit-fields input[type=number] { min-width: 0; width: 100%; height: 28px; padding: 4px 5px; margin-top: 3px; font-size: 11px; font-variant-numeric: tabular-nums; appearance: textfield; -moz-appearance: textfield; }
+.color-limit-fields input[type=number]::-webkit-inner-spin-button, .color-limit-fields input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.color-set.button.small { height: 28px; padding: 4px 8px; }
+.color-range-buttons { display: flex; align-items: center; gap: 4px; }
+.color-range-buttons .button.small { height: 26px; padding: 3px 8px; }
+#color-range-mode { color: #68737c; font-size: 10px; line-height: 1.25; margin-left: auto; text-align: right; }
+.color-auto-options { margin-top: 9px; }
+.inspector .color-auto-options summary { font-size: 11px; color: #62717b; }
+.inspector .color-auto-options[open] summary { margin-bottom: 8px; }
+.display-controls .range-label { margin: 0; }
+.display-controls .range-label label, .display-controls .range-label b { font-size: 10px; color: #666c72; font-weight: 400; }
+.inspector .color-auto-options input[type=range] { margin: 4px 0 0; }
+.display-controls .color-range-note { margin: 8px 0 0; font-size: 10px; line-height: 1.4; }
+.display-controls[data-busy=true] #color-range-mode { color: #8a9299; }
+.contrast-region-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
+.contrast-region-controls > span { font-size: 10px; color: #626970; }

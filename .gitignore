@@ -1,0 +1,13 @@
+# Local experimental data are not part of the public repository.
+/tests/data/local/
+.venv/
+node_modules/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.afm-workbench/
+.test-artifacts/
+.DS_Store
+afm_workbench/_native/
