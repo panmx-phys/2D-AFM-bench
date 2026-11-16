@@ -12,7 +12,7 @@ from unittest.mock import patch
 
 import numpy as np
 
-from afm_workbench.importers import load_scan
+from afm_workbench.importers import load_scan, LEGACY_POSITION_WARNING
 from afm_workbench.mcp import handle, serve
 from afm_workbench.server import create_server
 from afm_workbench.service import Workbench
@@ -62,6 +62,27 @@ class ServiceTests(unittest.TestCase):
         self.assertEqual(before, {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in folder.iterdir()})
         row = self.workbench._row(scan_id)
         self.assertEqual(hashlib.sha256((self.workbench.data_dir / row['source_artifact']).read_bytes()).hexdigest(), row['sha256'])
+
+    def test_map_footprint_available_for_existing_catalog_without_reimport(self):
+        folder = self.make_folder()
+        session = self.workbench.import_folder(str(folder))
+        scan_id = session['scans'][0]['id']
+        row = self.workbench._row(scan_id)
+        meta = json.loads(row['metadata'])
+        meta['importer_version'] = '1.0.0'
+        meta['position']['calibrated'] = False
+        meta['orientation']['swap_fast_slow'] = True
+        meta['warnings'].append(LEGACY_POSITION_WARNING)
+        stored = json.dumps(meta)
+        self.workbench._db.execute('UPDATE scans SET metadata=? WHERE id=?', (stored, scan_id))
+        self.workbench._db.commit()
+        summary = self.workbench.session(session['id'])['scans'][0]
+        self.assertTrue(summary['map_footprint']['calibrated'])
+        self.assertFalse(summary['position']['calibrated'], 'Original interpretation remains inspectable.')
+        detail = self.workbench.scan(scan_id)
+        self.assertEqual(detail['map_footprint'], summary['map_footprint'])
+        self.assertEqual(detail['metadata'], meta)
+        self.assertEqual(self.workbench._row(scan_id)['metadata'], stored)
 
     def test_background_update_is_responsive_and_cancel_preserves_completed_files(self):
         folder = self.make_folder()

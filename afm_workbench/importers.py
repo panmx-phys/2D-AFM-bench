@@ -25,6 +25,36 @@ PARK_MAGIC = 0x0E031301
 VERSIONS = {0x01000001: 356, 0x01000002: 580}
 TIFF_SIZES = {1: 1, 2: 1, 3: 2, 4: 4, 5: 8, 6: 1, 7: 1, 8: 2,
               9: 4, 10: 8, 11: 4, 12: 8, 13: 4}
+LEGACY_POSITION_WARNING = "Scanner footprint placement is unavailable: non-finite position or swapped fast/slow axes need explicit registration."
+
+
+def map_footprint(metadata: dict) -> dict | None:
+    """Derive an overview footprint without rewriting imported provenance.
+
+    Importer 1.0.0 incorrectly withheld finite Park positions when fast/slow
+    axes were swapped. Recover only that identified case. A footprint says
+    nothing about image registration; stored pixels are not transformed.
+    """
+    p = metadata.get('position')
+    if not isinstance(p, dict) or p.get('reference') not in ('center', 'corner'):
+        return None
+    values = [p.get('x_um'), p.get('y_um'), p.get('rotation_deg'),
+              metadata.get('width_um'), metadata.get('height_um')]
+    if not all(type(v) in (int, float) and math.isfinite(v) for v in values):
+        return None
+    if values[3] <= 0 or values[4] <= 0:
+        return None
+    swapped = (metadata.get('orientation') or {}).get('swap_fast_slow') is True
+    legacy = (p.get('calibrated') is False and swapped
+              and metadata.get('format') == 'Park TIFF'
+              and metadata.get('importer_version') == '1.0.0'
+              and p.get('source') == 'Park header tag 50435'
+              and p.get('reference') == 'center'
+              and LEGACY_POSITION_WARNING in metadata.get('warnings', []))
+    if p.get('calibrated') is not True and not legacy:
+        return None
+    return dict(p, calibrated=True, recovered_legacy_position=legacy,
+                orientation_note='Fast/slow axes swapped · pixels not registered' if swapped else '')
 
 
 def _slice(blob: bytes, offset: int, count: int, label: str) -> bytes:
@@ -160,15 +190,17 @@ def load_scan(path: str | Path) -> dict[str, Any]:
     acquisition = acquisition_match.group(1) if acquisition_match else path.stem
     x_offset, y_offset, angle = d(156), d(164), d(108)
     swap_xy = bool(u(136))
-    position_available = all(math.isfinite(x) for x in (x_offset, y_offset, angle)) and not swap_xy
+    position_available = all(math.isfinite(x) for x in (x_offset, y_offset, angle))
     if not position_available:
-        warnings.append("Scanner footprint placement is unavailable: non-finite position or swapped fast/slow axes need explicit registration.")
+        warnings.append("Scanner footprint placement is unavailable: position or angle is non-finite.")
+    if swap_xy:
+        warnings.append("Fast/slow axes are swapped; image pixels are not registered.")
     if u(92):
         warnings.append("Instrument header records automatic flattening; this import preserves the saved numerical payload.")
     def finite(value):
         return value if math.isfinite(value) else None
     metadata = {
-        'filename': path.name, 'format': 'Park TIFF', 'importer_version': '1.0.0',
+        'filename': path.name, 'format': 'Park TIFF', 'importer_version': '1.0.1',
         'channel': channel, 'direction': direction, 'direction_source': direction_source,
         'acquisition': acquisition, 'acquisition_source': 'filename prefix' if acquisition_match else 'filename',
         'width_um': width_um, 'height_um': height_um, 'width': width, 'height': height,

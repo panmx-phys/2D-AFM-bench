@@ -184,6 +184,22 @@ p { margin-bottom: 12px; }
 .map-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 10px; }
 .map-controls>span { color: var(--muted); font-size: 12px; }
 .map-controls .toggle-group button { padding: 6px 12px; }
+.map-opacity { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--muted); }
+.map-opacity input { width: 100px; accent-color: #64717d; }
+.map-opacity output { min-width: 4ch; font-variant-numeric: tabular-nums; }
+.map-unplaced { padding: 14px; background: #eff2f4; border: 1px solid #c9d0d6; border-radius: 3px; margin-top: 12px; }
+.map-unplaced p { margin: 6px 0 12px; color: var(--muted); font-size: 12px; }
+.map-unplaced-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(140px,1fr)); gap: 12px; }
+.map-unplaced-card { min-width: 0; text-align: left; padding: 8px; background: #f5f6f7; border: 1px solid #c9d0d6; border-radius: 3px; }
+.map-unplaced-card img { width: 100%; height: 130px; object-fit: contain; background: #dde2e6; }
+.map-unplaced-card strong, .map-unplaced-card small { display: block; margin-top: 6px; }
+.map-unplaced-card small { color: var(--muted); }
+.map-no-positions { height: 100%; overflow: auto; }
+.map-no-positions .map-unplaced { margin: 0; border: 0; }
+.map-unplaced-preview { height: 100%; display: flex; flex-direction: column; padding: 24px; }
+.map-unplaced-preview button { flex: 1; min-height: 0; border: 0; background: none; }
+.map-unplaced-preview img { width: 100%; height: 100%; object-fit: contain; }
+.map-unplaced-preview p { text-align: center; margin-top: 12px; color: var(--muted); }
 .map-layout { display: grid; grid-template-columns: minmax(0,1fr) 230px; border: 1px solid #c3cbd2; border-radius: 4px; overflow: hidden; height: clamp(470px,65vh,720px); }
 .map-panel { position: relative; background: #dde2e6; min-width: 0; min-height: 470px; overflow: hidden; }
 .map-panel>svg { width: 100%; height: 100%; position: absolute; inset: 0; touch-action: none; }

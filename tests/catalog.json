@@ -282,7 +282,7 @@
       "groups": [
         "map"
       ],
-      "purpose": "Overlapping/rotated footprints, selection, filtering and compact layout",
+      "purpose": "All-image overview, opacity, focus toggles, overlapping/rotated footprints, unplaced scans, filtering and compact layout",
       "affects": [
         "afm_workbench/service.py",
         "afm_workbench/server.py",

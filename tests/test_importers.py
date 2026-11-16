@@ -1,5 +1,6 @@
 """Synthetic Park fixtures authored for this project; no private data required."""
 import hashlib
+import copy
 from pathlib import Path
 import struct
 import tempfile
@@ -7,7 +8,7 @@ import unittest
 
 import numpy as np
 
-from afm_workbench.importers import ImportError, load_scan
+from afm_workbench.importers import ImportError, load_scan, map_footprint, LEGACY_POSITION_WARNING
 
 
 def park_fixture(values, *, dtype=2, version=0x01000002, gain=-2.0,
@@ -100,10 +101,47 @@ class ParkImporterTests(unittest.TestCase):
         self.assertTrue(any('Direction conflict' in w for w in m['warnings']))
         self.assertEqual(m['acquisition'], '002')
 
-    def test_swapped_axes_require_explicit_map_registration(self):
+    def test_swapped_axes_retain_footprint_without_registering_pixels(self):
         result = self.load(park_fixture(np.zeros((3, 4)), swap=1))
-        self.assertFalse(result['metadata']['position']['calibrated'])
+        self.assertTrue(result['metadata']['position']['calibrated'])
         self.assertTrue(result['metadata']['orientation']['swap_fast_slow'])
+        self.assertEqual(result['metadata']['orientation']['transform_applied'], 'none')
+        self.assertEqual(result['metadata']['orientation']['image_registration'], 'not established')
+
+    def test_map_footprint_recovers_only_known_legacy_axis_exclusion(self):
+        meta = self.load(park_fixture(np.zeros((3, 4)), swap=1))['metadata']
+        meta['importer_version'] = '1.0.0'
+        meta['position']['calibrated'] = False
+        meta['warnings'] = [LEGACY_POSITION_WARNING]
+        original = copy.deepcopy(meta)
+        footprint = map_footprint(meta)
+        self.assertTrue(footprint['recovered_legacy_position'])
+        self.assertEqual((footprint['x_um'], footprint['y_um'], footprint['rotation_deg']), (12, -7, 30))
+        self.assertIn('not registered', footprint['orientation_note'])
+        self.assertEqual(meta, original, 'Stored provenance must not be rewritten.')
+        for key, value in [('format', 'Other'), ('importer_version', 'unknown'), ('warnings', [])]:
+            with self.subTest(key=key):
+                changed = copy.deepcopy(meta)
+                changed[key] = value
+                self.assertIsNone(map_footprint(changed))
+        meta['orientation']['swap_fast_slow'] = False
+        self.assertIsNone(map_footprint(meta))
+
+    def test_map_footprint_rejects_missing_or_invalid_geometry(self):
+        meta = self.load(park_fixture(np.zeros((3, 4))))['metadata']
+        for key in ('x_um', 'y_um', 'rotation_deg'):
+            for value in (None, float('nan'), float('inf'), '0', True):
+                with self.subTest(key=key, value=value):
+                    changed = copy.deepcopy(meta)
+                    changed['position'][key] = value
+                    self.assertIsNone(map_footprint(changed))
+        for key in ('width_um', 'height_um'):
+            for value in (None, 0, -1, float('inf')):
+                changed = copy.deepcopy(meta)
+                changed[key] = value
+                self.assertIsNone(map_footprint(changed))
+        meta['position']['reference'] = 'unknown'
+        self.assertIsNone(map_footprint(meta))
 
     def test_missing_pixels_retained_and_mask_recorded(self):
         result = self.load(park_fixture([[1, np.nan, 2], [3, 4, 5]]))

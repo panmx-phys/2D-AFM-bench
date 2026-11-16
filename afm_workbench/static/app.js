@@ -5,7 +5,7 @@ const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const num=(v,d=2)=>v!==null&&v!==undefined&&v!==''&&Number.isFinite(Number(v))?Number(v).toLocaleString(undefined,{maximumFractionDigits:d}):'—';
 const date=v=>{if(!v)return'Local session';const d=new Date(v);return Number.isNaN(d.getTime())?v:d.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'});};
 const stored=(key,fallback)=>{try{const v=localStorage.getItem(key);return v===null?fallback:v;}catch{return fallback;}};
-const state={folders:[],folderFilter:'active',importJob:null,undoStack:[],lineDir:null,autoPrepare:stored('afm-auto-prepare','true')!=='false',browseLevel:stored('afm-browse-level','true')!=='false',levelPoints:[],contrastROI:null,sessions:[],session:null,view:'session',tab:'grid',query:'',channel:'overview',direction:'all',acquisition:'all',starred:false,compact:false,selected:new Set(),scan:null,tool:'inspect',palette:'amber',contrast:'auto',clip:0,raw:false,pending:null,profile:null,area:null,regions:[],step:null,mapZoom:1,mapMode:'focus',mapSelected:null,revision:0,loading:false,autoLineCorrection:true,processingAxis:'auto',lineMethod:'median',lineDegree:1,lineTrim:5,polynomialMode:'independent',polynomialDegree:3,polynomialDegreeX:3,polynomialDegreeY:3,manualCorrections:false,referenceMode:'include',profileWidth:1,profileInterpolation:'linear',inspectorHidden:stored('afm-inspector-hidden','false')==='true',inspectorTab:'view',inspectorScroll:{},inspectorDetails:{}};
+const state={folders:[],folderFilter:'active',importJob:null,undoStack:[],lineDir:null,autoPrepare:stored('afm-auto-prepare','true')!=='false',browseLevel:stored('afm-browse-level','true')!=='false',levelPoints:[],contrastROI:null,sessions:[],session:null,view:'session',tab:'grid',query:'',channel:'overview',direction:'all',acquisition:'all',starred:false,compact:false,selected:new Set(),scan:null,tool:'inspect',palette:'amber',contrast:'auto',clip:0,raw:false,pending:null,profile:null,area:null,regions:[],step:null,mapZoom:1,mapMode:'all',mapOpacity:Math.min(100,Math.max(10,Number(stored('afm-map-opacity','75'))||75)),mapSelected:null,revision:0,loading:false,autoLineCorrection:true,processingAxis:'auto',lineMethod:'median',lineDegree:1,lineTrim:5,polynomialMode:'independent',polynomialDegree:3,polynomialDegreeX:3,polynomialDegreeY:3,manualCorrections:false,referenceMode:'include',profileWidth:1,profileInterpolation:'linear',inspectorHidden:stored('afm-inspector-hidden','false')==='true',inspectorTab:'view',inspectorScroll:{},inspectorDetails:{}};
 let requestSerial=0,toastTimer,searchTimer,canvasRanges=[0,1];
 async function api(method,payload={}){
   if(['scan','process','preview','update_scan'].includes(method))payload={...payload,data_encoding:'f64le'};
@@ -98,19 +98,25 @@ function channelSwitch(scan,activeId,preview=false){
   return `<button class="channel-switch ${scan.id===activeId?'active':''}" data-action="open" data-id="${esc(scan.id)}" ${scan.id===activeId?'aria-current="true"':''}>${preview?`<img src="${thumb(scan,{palette:isHeight(scan.channel)?state.palette:'gray'})}" alt="">`:''}<span><strong>${esc(scan.channel)}</strong><small>${esc(scan.direction)} · ${esc(scan.value_unit)}</small></span></button>`;
 }
 function card(s){return `<article class="scan-card ${state.selected.has(s.id)?'selected':''}" data-scan-card="${esc(s.id)}"><input class="card-select" type="checkbox" aria-label="Select ${esc(s.channel)} ${esc(s.direction)} scan ${esc(s.acquisition)} for comparison" data-select="${esc(s.id)}" ${state.selected.has(s.id)?'checked':''}><button class="card-image-button" style="aspect-ratio:${s.width_um/s.height_um}" data-action="open" data-id="${esc(s.id)}" aria-label="Open ${esc(s.channel)} ${esc(s.direction)} scan ${esc(s.acquisition)}"><img src="${thumb(s)}" alt="${esc(s.channel)} scan ${esc(s.acquisition)}" loading="lazy"><span class="image-top"><span class="image-badge">${s.direction==='Backward'?'←':'→'} ${esc(s.direction)}</span>${s.operations?.length?'<span class="image-badge edited">Processed</span>':browseLeveled(s)?'<span class="image-badge" title="Display-only leveling; the stored data is unchanged">Leveled view</span>':''}</span><span class="scale-bar">${num(s.width_um/4)} µm</span></button><div class="card-info"><div class="card-title"><button class="title-link" data-action="open" data-id="${esc(s.id)}">${esc(s.channel)}</button><button class="icon-button ${s.starred?'active':''}" data-action="star" data-id="${esc(s.id)}" title="${s.starred?'Unstar':'Star'} image" aria-label="${s.starred?'Unstar':'Star'} ${esc(s.channel)} scan ${esc(s.acquisition)}">${icon('star')}</button></div><div class="card-meta">${s.width} × ${s.height} px <span>·</span>${num(s.width_um)} µm</div><div class="card-footer"><span title="${isHeight(s.channel)&&!s.operations?.length?'Computed from the stored, unleveled data':'Computed from the saved result'}">${isHeight(s.channel)?'Sq':'RMS variation'} <strong>${num(s.statistics?.sq)} ${esc(s.value_unit)}</strong>${isHeight(s.channel)&&!s.operations?.length?' <small>unleveled</small>':''}</span>${s.review_status==='reviewed'?`<span class="review-mark">${icon('check')}Reviewed</span>`:`<span>${s.warnings?.length?'Metadata note':s.operations?.length?`${s.operations.length} saved correction${s.operations.length===1?'':'s'}`:'Unprocessed'}</span>`}</div></div></article>`;}
-function position(s){const p=s.position||s.metadata?.position;if(!p||p.calibrated!==true||!Number.isFinite(p.x_um)||!Number.isFinite(p.y_um))return null;let x=p.x_um,y=p.y_um;const w=s.width_um,h=s.height_um,angle=p.rotation_deg||0;if(!(w>0&&h>0))return null;if(p.reference==='corner'){x+=w/2;y+=h/2;}return {x,y,w,h,angle};}
-function mapGroups(scans){
-  const groups=new Map();
-  for(const s of scans){
-    const p=position(s);if(!p)continue;
-    const key=[s.acquisition,p.x,p.y,p.w,p.h,p.angle].join('|');
-    if(!groups.has(key))groups.set(key,{...p,key,scans:[]});
-    groups.get(key).scans.push(s);
+function position(s){
+  const p=Object.hasOwn(s,'map_footprint')?s.map_footprint:s.position||s.metadata?.position;
+  if(!p||p.calibrated!==true||!['center','corner'].includes(p.reference))return null;
+  let x=p.x_um,y=p.y_um;const w=s.width_um,h=s.height_um,angle=p.rotation_deg;
+  if(![x,y,w,h,angle].every(Number.isFinite)||w<=0||h<=0)return null;
+  if(p.reference==='corner'){
+    const a=angle*Math.PI/180;
+    x+=(w*Math.cos(a)-h*Math.sin(a))/2;y+=(w*Math.sin(a)+h*Math.cos(a))/2;
   }
-  for(const group of groups.values())group.scans=sorted(group.scans);
-  return [...groups.values()];
+  return {x,y,w,h,angle,note:p.orientation_note||''};
+}
+function mapGroups(scans){
+  return acquisitionGroups(scans).map(scans=>{
+    const p=position(scans[0]);
+    return {...p,key:acquisitionKey(scans[0]),placed:!!p,scans};
+  });
 }
 function mapContains(g,x,y){
+  if(!g.placed)return false;
   // Invert the recorded footprint rotation, without transforming scan pixels.
   const a=g.angle*Math.PI/180,dx=x-g.x,dy=y-g.y;
   const localX=dx*Math.cos(a)+dy*Math.sin(a),localY=-dx*Math.sin(a)+dy*Math.cos(a);
@@ -123,9 +129,11 @@ function mapScanDescription(g){
   const fallback=heightPreferred&&!isHeight(s.channel)?'Z height unavailable · ':heightPreferred&&s.direction!=='Forward'&&state.direction==='all'?'Forward Z height unavailable · ':'';
   return `${fallback}${s.channel} · ${s.direction}`;
 }
+function clearMapFocus(){state.mapSelected=null;state.mapMode='all';renderContent();}
 function selectMapGroup(index){
   const g=mapGroups(filtered(state.session.scans))[index];if(!g)return;
-  state.mapSelected=g.key;
+  const deselect=state.mapSelected===g.key&&state.mapMode==='focus';
+  state.mapSelected=deselect?null:g.key;state.mapMode=deselect?'all':'focus';
   closeModal();renderContent();
   const row=document.querySelector(`.map-aside [data-action="map-select"][data-key="${index}"]`);
   row?.focus({preventScroll:true});
@@ -134,23 +142,27 @@ function selectMapGroup(index){
 function pickMapLocation(el,event){
   const groups=mapGroups(filtered(state.session.scans));
   // Keyboard activation selects the focused footprint; pointer activation considers every layer.
-  if(!event?.detail){selectMapGroup(Number(el.dataset.key));return;}
-  const svg=el.ownerSVGElement||el,point=svg.createSVGPoint();
-  point.x=event.clientX;point.y=event.clientY;
-  const local=point.matrixTransform(svg.getScreenCTM().inverse());
+  if(!event?.detail){if(el.dataset.key!==undefined)selectMapGroup(Number(el.dataset.key));return;}
+  const svg=el.ownerSVGElement||el,matrix=svg.getScreenCTM();if(!matrix)return;
+  const point=svg.createSVGPoint();point.x=event.clientX;point.y=event.clientY;
+  const local=point.matrixTransform(matrix.inverse());
   const x=Number(svg.dataset.centerX)+(local.x-400)/Number(svg.dataset.scale);
   const y=Number(svg.dataset.centerY)-(local.y-280)/Number(svg.dataset.scale);
   const hits=groups.map((g,index)=>({g,index})).filter(({g})=>mapContains(g,x,y));
-  if(!hits.length)return;
+  if(!hits.length||state.mapMode==='focus'&&hits.some(({g})=>g.key===state.mapSelected)){clearMapFocus();return;}
   if(hits.length===1){selectMapGroup(hits[0].index);return;}
-  showModal(`${hits.length} scans at this point`,`<p>Choose a scan to bring it forward. Recorded positions stay fixed.</p>${hits.map(({g,index})=>`<button class="map-location" data-action="map-select" data-key="${index}"><img src="${thumb(primaryScan(g.scans))}" alt=""><span><strong>Scan ${esc(g.scans[0].acquisition)}</strong><small>${num(g.w)} × ${num(g.h)} µm · ${g.scans.length} image${g.scans.length===1?'':'s'}</small><small>${esc(mapScanDescription(g))}</small></span>${icon('chevron')}</button>`).join('')}`);
+  showModal(`${hits.length} scans at this point`,`<p>Choose a scan to focus. Click it again to show all images.</p>${hits.map(({g,index})=>`<button class="map-location" data-action="map-select" data-key="${index}"><img src="${thumb(primaryScan(g.scans))}" alt=""><span><strong>Scan ${esc(g.scans[0].acquisition)}</strong><small>${num(g.w)} × ${num(g.h)} µm · ${g.scans.length} image${g.scans.length===1?'':'s'}</small><small>${esc(mapScanDescription(g))}</small></span>${icon('chevron')}</button>`).join('')}`);
   document.querySelector('.modal [data-action="map-select"]')?.focus();
 }
-function renderMap(scans){
-  const groups=mapGroups(scans);
-  if(!groups.length)return `<div class="empty-state" style="min-height:330px"><div class="empty-illustration">${icon('map')}</div><h2>No calibrated positions available</h2><p>Spatial placement needs instrument offsets and scan size. Images with missing position metadata remain available in the contact sheet.</p></div>`;
+function mapUnplaced(groups){
+  return `<section class="map-unplaced"><h3>Not placed on map</h3><p>Position, angle or size is unavailable. Images remain available here.</p><div class="map-unplaced-grid">${groups.map((g,i)=>g.placed?'':`<button class="map-unplaced-card" data-action="map-select" data-key="${i}"><img src="${thumb(primaryScan(g.scans))}" alt="${esc(mapScanDescription(g))}"><strong>Scan ${esc(g.scans[0].acquisition)}</strong><small>${esc(mapScanDescription(g))}</small></button>`).join('')}</div></section>`;
+}
+function renderMapPlot(groups,selected){
+  const placed=groups.filter(g=>g.placed);
+  if(selected&&!selected.placed)return `<div class="map-unplaced-preview"><button data-action="map-select" data-key="${groups.indexOf(selected)}" title="Show all images"><img src="${thumb(primaryScan(selected.scans))}" alt="${esc(mapScanDescription(selected))}"></button><p>Scan ${esc(selected.scans[0].acquisition)} · Not placed on map</p></div>`;
+  if(!placed.length)return `<div class="map-no-positions">${mapUnplaced(groups)}</div>`;
   let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
-  for(const g of groups){
+  for(const g of placed){
     const a=g.angle*Math.PI/180;
     const dx=Math.abs(g.w*Math.cos(a))/2+Math.abs(g.h*Math.sin(a))/2,dy=Math.abs(g.w*Math.sin(a))/2+Math.abs(g.h*Math.cos(a))/2;
     minX=Math.min(minX,g.x-dx);maxX=Math.max(maxX,g.x+dx);minY=Math.min(minY,g.y-dy);maxY=Math.max(maxY,g.y+dy);
@@ -158,23 +170,30 @@ function renderMap(scans){
   const centerX=(minX+maxX)/2,centerY=(minY+maxY)/2,span=Math.max(maxX-minX,(maxY-minY)*1.4,1)*1.4/state.mapZoom;
   const viewW=800,viewH=560,scale=viewW/span,x=v=>viewW/2+(v-centerX)*scale,y=v=>viewH/2-(v-centerY)*scale;
   const tickStep=niceStep(span/7);let grid='';
-  for(let i=Math.ceil((centerX-span/2)/tickStep)*tickStep;i<centerX+span/2;i+=tickStep)grid+=`<line x1="${x(i)}" y1="0" x2="${x(i)}" y2="${viewH}" stroke="#d1d4d7" stroke-width=".7"/><text x="${x(i)+4}" y="${viewH-44}" fill="#747a80" font-size="9">${num(i,2)}</text>`;
-  const yspan=viewH/scale;
-  for(let i=Math.ceil((centerY-yspan/2)/tickStep)*tickStep;i<centerY+yspan/2;i+=tickStep)grid+=`<line x1="0" y1="${y(i)}" x2="${viewW}" y2="${y(i)}" stroke="#d1d4d7" stroke-width=".7"/><text x="7" y="${y(i)-5}" fill="#747a80" font-size="9">${num(i,2)}</text>`;
-  const selected=groups.find(g=>g.key===state.mapSelected)||groups[0];state.mapSelected=selected.key;
-  const selectedIndex=groups.indexOf(selected);
+  // Bounded tick indexes avoid a non-advancing float increment for distant offsets.
+  const ticks=(center,extent)=>Array.from({length:Math.min(100,Math.ceil(extent/tickStep)+1)},(_,i)=>(Math.ceil((center-extent/2)/tickStep)+i)*tickStep);
+  for(const i of ticks(centerX,span))grid+=`<line x1="${x(i)}" y1="0" x2="${x(i)}" y2="${viewH}" stroke="#d1d4d7" stroke-width=".7"/><text x="${x(i)+4}" y="${viewH-44}" fill="#747a80" font-size="9">${num(i,2)}</text>`;
+  for(const i of ticks(centerY,viewH/scale))grid+=`<line x1="0" y1="${y(i)}" x2="${viewW}" y2="${y(i)}" stroke="#d1d4d7" stroke-width=".7"/><text x="7" y="${y(i)-5}" fill="#747a80" font-size="9">${num(i,2)}</text>`;
   const transform=g=>`translate(${x(g.x)} ${y(g.y)}) rotate(${-g.angle})`;
-  // Large footprints go behind smaller ones; the explicitly selected scan is always last.
-  const layers=groups.filter(g=>g!==selected).sort((a,b)=>b.w*b.h-a.w*a.h).concat(selected);
-  const images=state.mapMode==='outlines'?'':layers.filter(g=>state.mapMode==='all'||g===selected).map(g=>`<image class="map-image" data-key="${groups.indexOf(g)}" href="${thumb(primaryScan(g.scans))}" transform="${transform(g)}" x="${-g.w*scale/2}" y="${-g.h*scale/2}" width="${g.w*scale}" height="${g.h*scale}" preserveAspectRatio="none" pointer-events="none"/>`).join('');
-  const outlines=layers.map(g=>`<g class="map-hit ${g===selected?'selected':''}" data-action="map-pick" data-key="${groups.indexOf(g)}" tabindex="0" role="button" aria-pressed="${g===selected}" aria-label="Select scan ${esc(g.scans[0].acquisition)}, ${g.scans.length} images" transform="${transform(g)}"><title>Scan ${esc(g.scans[0].acquisition)} · ${esc(mapScanDescription(g))}</title><rect class="map-outline-halo" x="${-g.w*scale/2}" y="${-g.h*scale/2}" width="${g.w*scale}" height="${g.h*scale}"/><rect class="map-outline" x="${-g.w*scale/2}" y="${-g.h*scale/2}" width="${g.w*scale}" height="${g.h*scale}"/></g>`).join('');
-  const missing=scans.length-groups.reduce((n,g)=>n+g.scans.length,0);
-  return `<div class="map-controls"><div class="toggle-group" role="group" aria-label="Map display">${[['focus','Focus'],['all','All images'],['outlines','Outlines']].map(([value,label])=>`<button class="${state.mapMode===value?'active':''}" data-action="map-mode" data-value="${value}" aria-pressed="${state.mapMode===value}">${label}</button>`).join('')}</div><span>Click an overlap to choose a scan.</span></div><div class="map-layout"><div class="map-panel"><svg viewBox="0 0 800 560" role="group" aria-label="AFM scan footprints at recorded sample positions, in micrometers" data-action="map-pick" data-center-x="${centerX}" data-center-y="${centerY}" data-scale="${scale}"><rect width="800" height="560" fill="#e7e9eb"/>${grid}${images}${outlines}</svg><div class="map-label">${icon('map')} SAMPLE COORDINATES <span>µm</span></div><div class="map-selected-label">Scan ${esc(selected.scans[0].acquisition)} · ${esc(mapScanDescription(selected))}</div><div class="map-legend">x → &nbsp; y ↑ · ${num(state.mapZoom,1)}×</div><div class="map-tools"><button class="icon-button" data-action="map-zoom" data-value="out" title="Zoom out">${icon('minus')}</button><button class="icon-button" data-action="map-zoom" data-value="fit" title="Fit all positions">${icon('expand')}</button><button class="icon-button" data-action="map-zoom" data-value="in" title="Zoom in">${icon('plus')}</button></div></div><aside class="map-aside"><div class="map-aside-heading"><h3>Acquisitions</h3><span>${groups.length}</span></div><p class="map-hint">${state.mapMode==='focus'?'Selected image + all footprints':state.mapMode==='all'?'Selected image in front':'Recorded footprints only'}</p>${groups.map((g,i)=>`<div class="map-acquisition ${g===selected?'selected':''}"><button class="map-location" data-action="map-select" data-key="${i}" aria-pressed="${g===selected}"><img src="${thumb(primaryScan(g.scans))}" alt=""><span><strong>Scan ${esc(g.scans[0].acquisition)}</strong><small>${num(g.w)} × ${num(g.h)} µm · ${g.scans.length} image${g.scans.length===1?'':'s'}</small><small>x ${num(g.x)} · y ${num(g.y)} µm</small></span></button>${g===selected?`<button class="button small map-channels" data-action="map-location" data-key="${selectedIndex}">Open channels (${g.scans.length}) ${icon('chevron')}</button>`:''}</div>`).join('')}</aside></div><div class="map-footnote">${icon('info')}Recorded offsets and sizes define the footprints. Thumbnail orientation follows stored pixels; this overview is not a registered or stitched measurement.${missing?` ${missing} image${missing===1?' has':'s have'} no position.`:''}</div>`;
+  const layers=placed.filter(g=>g!==selected).sort((a,b)=>b.w*b.h-a.w*a.h);
+  if(selected)layers.push(selected);
+  const images=state.mapMode==='outlines'?'':layers.filter(g=>state.mapMode==='all'||g===selected).map(g=>`<image class="map-image" data-key="${groups.indexOf(g)}" opacity="${state.mapMode==='focus'?1:state.mapOpacity/100}" href="${thumb(primaryScan(g.scans))}" transform="${transform(g)}" x="${-g.w*scale/2}" y="${-g.h*scale/2}" width="${g.w*scale}" height="${g.h*scale}" preserveAspectRatio="none" pointer-events="none"/>`).join('');
+  const outlines=layers.map(g=>`<g class="map-hit ${g===selected?'selected':''}" data-action="map-pick" data-key="${groups.indexOf(g)}" tabindex="0" role="button" aria-pressed="${g===selected}" aria-label="${g===selected?'Unfocus':'Focus'} scan ${esc(g.scans[0].acquisition)}, ${g.scans.length} images" transform="${transform(g)}"><title>Scan ${esc(g.scans[0].acquisition)} · ${esc(mapScanDescription(g))}</title><rect class="map-outline-halo" x="${-g.w*scale/2}" y="${-g.h*scale/2}" width="${g.w*scale}" height="${g.h*scale}"/><rect class="map-outline" x="${-g.w*scale/2}" y="${-g.h*scale/2}" width="${g.w*scale}" height="${g.h*scale}"/></g>`).join('');
+  return `<svg viewBox="0 0 800 560" role="group" aria-label="AFM scan footprints at recorded sample positions, in micrometers" data-action="map-pick" data-center-x="${centerX}" data-center-y="${centerY}" data-scale="${scale}"><rect width="800" height="560" fill="#e7e9eb"/>${grid}${images}${outlines}</svg><div class="map-label">${icon('map')} SAMPLE COORDINATES <span>µm</span></div>${selected?`<div class="map-selected-label">Scan ${esc(selected.scans[0].acquisition)} · ${esc(mapScanDescription(selected))}${selected.note?`<br>${esc(selected.note)}`:''}</div>`:''}<div class="map-legend">x → &nbsp; y ↑ · ${num(state.mapZoom,1)}×</div><div class="map-tools"><button class="icon-button" data-action="map-zoom" data-value="out" title="Zoom out">${icon('minus')}</button><button class="icon-button" data-action="map-zoom" data-value="fit" title="Fit all positions">${icon('expand')}</button><button class="icon-button" data-action="map-zoom" data-value="in" title="Zoom in">${icon('plus')}</button></div>`;
+}
+function renderMap(scans){
+  const groups=mapGroups(scans),selected=groups.find(g=>g.key===state.mapSelected);
+  if(!selected){state.mapSelected=null;if(state.mapMode==='focus')state.mapMode='all';}
+  if(!groups.length)return `<div class="empty-state"><h3>No matching images</h3><button class="button" data-action="clear-filters">Reset filters</button></div>`;
+  const placed=groups.filter(g=>g.placed),missing=groups.length-placed.length;
+  const controls=`<div class="map-controls"><div class="toggle-group" role="group" aria-label="Map display">${[['all','All images'],['focus','Focus'],['outlines','Outlines']].map(([value,label])=>`<button class="${state.mapMode===value?'active':''}" data-action="map-mode" data-value="${value}" aria-pressed="${state.mapMode===value}" ${value==='focus'&&!selected?'disabled':''}>${label}</button>`).join('')}</div><label class="map-opacity">Opacity <input id="map-opacity" aria-label="Map image opacity" type="range" min="10" max="100" step="5" value="${state.mapOpacity}" ${state.mapMode!=='all'?'disabled':''}><output for="map-opacity">${state.mapOpacity}%</output></label><span>${selected?'Click again, empty space, or Escape to show all.':'Click an image to focus; choose a scan where images overlap.'}</span></div>`;
+  const aside=`<aside class="map-aside"><div class="map-aside-heading"><h3>Acquisitions</h3><span>${groups.length}</span></div><p class="map-hint">${placed.length} on map${missing?` · ${missing} not placed`:''} · One image per acquisition</p>${groups.map((g,i)=>{const s=primaryScan(g.scans);return `<div class="map-acquisition ${g===selected?'selected':''}"><button class="map-location" data-action="map-select" data-key="${i}" aria-pressed="${g===selected}"><img src="${thumb(s)}" alt=""><span><strong>Scan ${esc(s.acquisition)}</strong><small>${num(s.width_um)} × ${num(s.height_um)} µm · ${g.scans.length} image${g.scans.length===1?'':'s'}</small><small>${g.placed?`x ${num(g.x)} · y ${num(g.y)} µm`:'Not placed · position, angle or size unavailable'}</small>${g.note?`<small>${esc(g.note)}</small>`:''}</span></button>${g===selected?`<button class="button small map-channels" data-action="map-location" data-key="${i}">Open channels (${g.scans.length}) ${icon('chevron')}</button>`:''}</div>`;}).join('')}</aside>`;
+  return `${controls}<div class="map-layout"><div class="map-panel">${renderMapPlot(groups,selected)}</div>${aside}</div>${placed.length&&missing?mapUnplaced(groups):''}<div class="map-footnote">${icon('info')}<span>Recorded offsets, sizes and angles define the footprints. Previews retain stored pixel orientation; they are not registered or stitched. Opacity changes display only.</span></div>`;
 }
 function niceStep(v){const power=10**Math.floor(Math.log10(v));const n=v/power;return (n<2?1:n<5?2:5)*power;}
 function renderTray(){document.querySelector('.comparison-tray')?.remove();if(!state.selected.size||!['session','starred'].includes(state.view))return;const tray=document.createElement('div');tray.className='comparison-tray';tray.innerHTML=`<span>${state.selected.size} image${state.selected.size===1?'':'s'} selected</span><button class="button" data-action="compare" ${state.selected.size<2?'disabled':''}>${icon('compare')}Compare images</button><button class="icon-button" data-action="clear-selection" aria-label="Clear selection">${icon('close')}</button>`;document.body.append(tray);}
 async function refreshSession(){if(state.session)state.session=await api('session',{id:state.session.id});const boot=await api('bootstrap');state.sessions=boot.sessions;}
-async function openSession(id){const serial=++requestSerial;setBusy('Opening session…');try{const session=await api('session',{id});if(serial!==requestSerial)return;state.session=session;state.view='session';state.scan=null;state.selected.clear();state.channel='overview';state.direction='all';state.acquisition='all';state.query='';state.starred=false;state.mapZoom=1;state.mapSelected=null;state.pending=null;renderShell();}finally{setBusy(null);}}
+async function openSession(id){const serial=++requestSerial;setBusy('Opening session…');try{const session=await api('session',{id});if(serial!==requestSerial)return;state.session=session;state.view='session';state.scan=null;state.selected.clear();state.channel='overview';state.direction='all';state.acquisition='all';state.query='';state.starred=false;state.mapZoom=1;state.mapSelected=null;state.mapMode='all';state.pending=null;renderShell();}finally{setBusy(null);}}
 function syncScanSummary(scan){
   for(const session of [state.session,...(state.starredSessions||[])]){
     const item=session?.scans.find(s=>s.id===scan.id);if(!item)continue;
@@ -626,11 +645,11 @@ const actions={
 'clear-selection':()=>{state.selected.clear();renderContent();},
 'compare':async()=>{setBusy('Preparing comparison…');try{state.comparison=await Promise.all([...state.selected].map(async id=>{const s=await api('scan',{id}),d=s.display||{};if(d.mode==='manual')s.comparison_range=[d.minimum,d.maximum];else{const r=await api('display_range',{id,mode:d.mode||'full',clip_percent:d.clip_percent||0});s.comparison_range=[r.minimum,r.maximum];}return s;}));state.commonRange=false;state.view='compare';renderShell();}finally{setBusy(null);}},
 'common-range':()=>{state.commonRange=!state.commonRange;renderContent();},
-'map-mode':el=>{state.mapMode=el.dataset.value;renderContent();document.querySelector(`[data-action="map-mode"][data-value="${state.mapMode}"]`)?.focus();},
+'map-mode':el=>{if(!['all','focus','outlines'].includes(el.dataset.value))return;state.mapMode=el.dataset.value;if(state.mapMode!=='focus')state.mapSelected=null;renderContent();document.querySelector(`[data-action="map-mode"][data-value="${state.mapMode}"]`)?.focus();},
 'map-select':el=>selectMapGroup(Number(el.dataset.key)),
 'map-pick':pickMapLocation,
 'map-zoom':el=>{state.mapZoom=el.dataset.value==='fit'?1:Math.min(8,Math.max(.25,state.mapZoom*(el.dataset.value==='in'?1.4:1/1.4)));renderContent();},
-'map-location':el=>{const g=mapGroups(filtered(state.session.scans))[Number(el.dataset.key)];if(!g)return;showModal(`Scan ${g.scans[0].acquisition}`,`<p>${num(g.w)} × ${num(g.h)} µm at x ${num(g.x)}, y ${num(g.y)} µm · ${g.scans.length} images at this position.</p>${g.scans.map(s=>`<button class="map-location" data-action="open-map-image" data-id="${esc(s.id)}"><img src="${thumb(s)}" alt=""><span><strong>${esc(s.channel)}</strong><small>${esc(s.direction)} · ${s.width} × ${s.height} px</small></span>${icon('chevron')}</button>`).join('')}`);},
+'map-location':el=>{const g=mapGroups(filtered(state.session.scans))[Number(el.dataset.key)];if(!g)return;showModal(`Scan ${g.scans[0].acquisition}`,`<p>${g.placed?`${num(g.w)} × ${num(g.h)} µm at x ${num(g.x)}, y ${num(g.y)} µm`:`Not placed on map`} · ${g.scans.length} images.</p>${g.scans.map(s=>`<button class="map-location" data-action="open-map-image" data-id="${esc(s.id)}"><img src="${thumb(s)}" alt=""><span><strong>${esc(s.channel)}</strong><small>${esc(s.direction)} · ${s.width} × ${s.height} px</small></span>${icon('chevron')}</button>`).join('')}`);},
 'open-map-image':el=>{closeModal();return openScan(el.dataset.id);},
 'review':async()=>{const updated=await api('update_scan',{id:state.scan.id,review_status:state.scan.review_status==='reviewed'?'unreviewed':'reviewed'});state.scan.review_status=updated.review_status;await refreshSession();renderContent();toast(state.scan.review_status==='reviewed'?'Marked as reviewed.':'Marked as unreviewed.');},
 'inspect-plane':inspectPlane,
@@ -663,12 +682,13 @@ else if(['line-degree','line-trim','polynomial-degree','polynomial-degree-x','po
   return;
 }else if(id==='profile-interpolation'){state.profileInterpolation=e.target.value;if(state.profile?.selection){setBusy('Updating profile…');try{await measureProfile(state.profile.selection.start,state.profile.selection.end);renderContent();}finally{setBusy(null);}}return;}
 else if(id==='channel-filter')state.channel=e.target.value;else if(id==='direction-filter')state.direction=e.target.value;else if(id==='acquisition-filter')state.acquisition=e.target.value;else if(id==='related-scan'){await openScan(e.target.value);return;}else return;renderContent();}catch(error){toast(error.message,true);}});
-document.addEventListener('input',e=>{if(e.target.id==='global-search'){clearTimeout(searchTimer);state.query=e.target.value;searchTimer=setTimeout(()=>{if(['library','session','starred','folders'].includes(state.view))renderContent();},150);}});
+document.addEventListener('input',e=>{if(e.target.id==='map-opacity'){state.mapOpacity=Math.min(100,Math.max(10,Number(e.target.value)||75));document.querySelectorAll('.map-image').forEach(image=>image.setAttribute('opacity',state.mapOpacity/100));document.querySelector('.map-opacity output').textContent=`${state.mapOpacity}%`;try{localStorage.setItem('afm-map-opacity',String(state.mapOpacity));}catch{}return;}if(e.target.id==='global-search'){clearTimeout(searchTimer);state.query=e.target.value;searchTimer=setTimeout(()=>{if(['library','session','starred','folders'].includes(state.view))renderContent();},150);}});
 document.addEventListener('keydown',e=>{
   if(state.loading)return;
   if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){e.preventDefault();document.getElementById('global-search')?.focus();return;}
   if(e.key==='Escape'){
     if(document.querySelector('.modal'))closeModal();
+    else if(state.view==='session'&&state.tab==='map'&&state.mapSelected){clearMapFocus();document.querySelector('[data-action="map-mode"][data-value="all"]')?.focus();}
     else if(state.view==='detail'&&AFMCanvas.cancel()){e.preventDefault();return;}
     else if(state.view==='detail'&&state.tool!=='inspect'){selectTool('inspect');document.getElementById('height-canvas')?.focus();}
     else if(['detail','compare'].includes(state.view))actions.back().catch(error=>toast(error.message,true));

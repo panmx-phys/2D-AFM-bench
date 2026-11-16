@@ -23,6 +23,7 @@ import numpy as np
 from PIL import Image
 
 from .cache import MemoryCache
+from .importers import map_footprint
 
 
 def _now():
@@ -178,6 +179,7 @@ class Workbench:
                 'value_unit', 'width', 'height', 'instrument', 'position', 'x_offset_um',
                 'y_offset_um', 'scan_angle_deg', 'warnings', 'calibration', 'orientation')
         item = {key: meta.get(key) for key in keys}
+        item['map_footprint'] = map_footprint(meta)
         item.update(id=row['id'], session_id=row['session_id'], filename=row['filename'],
                     starred=bool(row['starred']), review_status=row['review_status'],
                     statistics=json.loads(row['statistics']), operations=json.loads(row['operations']))
