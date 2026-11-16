@@ -81,3 +81,9 @@ creating draft assets. GUI/browser checks and the six legacy scripts remain
 explicitly deferred/inactive in its manifest. Run the full active suite against
 the resulting executable for desktop acceptance; a successful candidate build
 does not replace that step. See [release instructions](publishing.md).
+
+The Windows release workflow runs the full active catalog against its rebuilt
+EXE, including browser and native WebView2 checks. It also opens the packaged
+EXE in a disposable synthetic workspace and retains a startup screenshot for
+visual review. Those runs are evidence only after they pass; clean-machine
+installation, physical folder drops and six legacy workflows remain separate.

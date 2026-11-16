@@ -29,18 +29,54 @@ jobs:
         run: |
           python -m pip install --require-hashes --only-binary=:all: -r release/windows-bootstrap.lock
           python -m pip install --require-hashes --no-build-isolation -r release/windows-x64.lock
+      - name: Install browser acceptance tools
+        run: |
+          npm install --prefix .test-artifacts/browser --no-save --package-lock=false playwright@1.62.1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node .test-artifacts/browser/node_modules/playwright/cli.js install chromium
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Build and test Windows candidate
         env:
           PYTHONUTF8: '1'
           RELEASE_REF_TYPE: ${{ github.ref_type }}
           RELEASE_TAG: ${{ github.ref_name }}
         run: |
+          $env:AFM_PLAYWRIGHT_MODULE = Join-Path $PWD '.test-artifacts/browser/node_modules/playwright'
           if ($env:RELEASE_REF_TYPE -eq 'tag') {
-            python scripts/release_windows.py --tag $env:RELEASE_TAG
+            python scripts/release_windows.py --tag $env:RELEASE_TAG --acceptance
           } else {
-            python scripts/release_windows.py
+            python scripts/release_windows.py --acceptance
           }
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Observe packaged desktop startup
+        run: |
+          $workspace = Join-Path $env:RUNNER_TEMP 'afm-packaged-startup'
+          $app = Start-Process -FilePath 'dist/AFM Workbench.exe' -ArgumentList @('--demo', '--data-dir', ('"' + $workspace + '"')) -PassThru
+          try {
+            $deadline = (Get-Date).AddSeconds(90)
+            $window = $null
+            while ((Get-Date) -lt $deadline) {
+              $ids = @($app.Id) + @(Get-CimInstance Win32_Process | Where-Object ParentProcessId -eq $app.Id | Select-Object -ExpandProperty ProcessId)
+              $window = Get-Process -Id $ids -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowHandle -ne 0 -and $_.MainWindowTitle -eq 'AFM Workbench' } | Select-Object -First 1
+              if ($window) { break }
+              Start-Sleep -Seconds 1
+            }
+            if (-not $window) { throw 'Packaged executable did not open its desktop window.' }
+            Start-Sleep -Seconds 8
+            if ($window.HasExited) { throw 'Packaged desktop exited before capture.' }
+            Add-Type -AssemblyName System.Windows.Forms
+            Add-Type -AssemblyName System.Drawing
+            $bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+            $bitmap = New-Object System.Drawing.Bitmap $bounds.Width, $bounds.Height
+            $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
+            try {
+              $graphics.CopyFromScreen($bounds.Location, [System.Drawing.Point]::Empty, $bounds.Size)
+              $bitmap.Save((Join-Path $PWD '.test-artifacts/runs/packaged-desktop.png'))
+            } finally { $graphics.Dispose(); $bitmap.Dispose() }
+            @{ title = $window.MainWindowTitle; synthetic = $true; executable = 'dist/AFM Workbench.exe'; result = 'Native window opened; inspect screenshot for rendered content' } | ConvertTo-Json | Set-Content '.test-artifacts/runs/packaged-desktop.json'
+          } finally {
+            taskkill /PID $app.Id /T /F | Out-Null
+          }
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: windows-x64-release

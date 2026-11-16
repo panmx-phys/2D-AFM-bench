@@ -145,6 +145,11 @@ On 2026-11-15 the combined 0.1.0 release was marked GitHub **Latest**, so that t
 permanent download links work. It stays titled and described as experimental.
 This exception does not certify a stable release, Intel Mac or Windows support.
 
+On 2026-11-15 the user requested publication of 0.1.1 with the sample-map fixes.
+Publish it under the same explicit experimental label, with fresh platform
+builds, full active checks, packaged startup evidence and the remaining signing
+and clean-machine limitations recorded in the combined release notes.
+
 ## Windows x64 candidate
 
 Use CPython 3.12 x64 on Windows with Git. Create a virtual environment, then
@@ -192,7 +197,10 @@ The [Windows workflow](../.github/workflows/release-windows.yml) runs manually f
 artifact-only builds or on `windows-vX.Y.Z` tags. A tagged build requires the tag
 to match the application version, point at HEAD and have a clean checkout. The
 separate Windows tag namespace does not trigger or replace the Mac release.
-Only successful tagged builds create an experimental **draft** release; existing
+The Windows workflow installs Playwright/Chromium, runs `--acceptance`, and
+captures the packaged EXE's native startup in a disposable synthetic workspace.
+Inspect its screenshot before publication; this does not establish clean-machine
+compatibility. Only successful tagged builds create an experimental **draft** release; existing
 assets are never overwritten. Unsigned candidates remain drafts pending clean
 machine installation, physical File Explorer drop testing and signing. Creating
 the workflow is not evidence that GitHub Actions ran it.
