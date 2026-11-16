@@ -199,8 +199,10 @@ class ReleaseTests(unittest.TestCase):
                 if '-l' in args:
                     return 'cmd LC_BUILD_VERSION\n minos 14.0\n sdk 15.0'
                 return 'binary:\n\t@loader_path/liblocal.dylib (compatibility version 1.0)'
-            with patch.object(release_macos, 'run'), patch.object(release_macos, 'output', side_effect=otool):
+            with patch.object(release_macos, 'run') as run, patch.object(release_macos, 'output', side_effect=otool):
                 self.assertEqual(release_macos.inspect_bundle(app)['minimum_macos'], '14.0.0')
+                self.assertEqual(run.call_args.args, ('lipo', app / 'binary', '-verify_arch', 'arm64'),
+                                 'Apple lipo treats every argument after -verify_arch as an architecture.')
             with patch.object(release_macos, 'run'), patch.object(release_macos, 'output', return_value=
                     'binary:\n\t/opt/homebrew/lib/libforeign.dylib (compatibility version 1.0)'):
                 with self.assertRaisesRegex(RuntimeError, 'External library'):

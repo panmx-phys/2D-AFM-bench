@@ -145,10 +145,12 @@ On 2026-11-15 the combined 0.1.0 release was marked GitHub **Latest**, so that t
 permanent download links work. It stays titled and described as experimental.
 This exception does not certify a stable release, Intel Mac or Windows support.
 
-On 2026-11-15 the user requested publication of 0.1.1 with the sample-map fixes.
+On 2026-11-15 the user requested publication of the sample-map fixes.
 Publish it under the same explicit experimental label, with fresh platform
 builds, full active checks, packaged startup evidence and the remaining signing
 and clean-machine limitations recorded in the combined release notes.
+The unpublished 0.1.1 candidate exposed a Mac architecture-inspection command
+error. Preserve its existing tags; 0.1.2 includes the corrected invocation.
 
 ## Windows x64 candidate
 

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "afm-workbench"
-version = "0.1.1"
+version = "0.1.2"
 description = "A local desktop library and reproducible analysis workbench for AFM sessions"
 readme = "README.md"
 requires-python = ">=3.10"

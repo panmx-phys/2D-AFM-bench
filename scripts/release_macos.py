@@ -217,7 +217,9 @@ def inspect_bundle(app):
             if stream.read(4) not in magic:
                 continue
         count += 1
-        run('lipo', '-verify_arch', 'arm64', path, stdout=subprocess.DEVNULL)
+        # Apple's lipo consumes every argument after -verify_arch as an
+        # architecture, so the input filename must precede that operation.
+        run('lipo', path, '-verify_arch', 'arm64', stdout=subprocess.DEVNULL)
         load = output('otool', '-arch', 'arm64', '-l', path)
         versions = re.findall(r'\bminos (\d+(?:\.\d+){0,2})', load)
         versions += re.findall(r'cmd LC_VERSION_MIN_MACOSX\s+cmdsize \d+\s+version (\d+(?:\.\d+){0,2})', load)
