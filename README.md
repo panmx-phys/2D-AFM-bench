@@ -12,10 +12,17 @@ A local desktop application for browsing, processing and measuring atomic force 
 
 ## Download
 
-Download the portable apps from the combined [Windows and Mac release](https://github.com/panmx-phys/2D-AFM-bench/releases/tag/v0.1.0). Version 0.1.0 is an experimental prerelease with two application downloads:
+These links always download the newest version:
 
-- **Windows x64:** save the single `.exe` anywhere and open it. No installer or adjacent support folder is needed. Python and the scientific libraries are embedded; Windows 10/11 x64, Microsoft Edge WebView2 Runtime and .NET Framework 4.8 are required. The executable is unsigned.
-- **Apple Silicon Mac:** extract the `.app.tar.gz` download and open **AFM Workbench.app**. The archive contains only the app bundle. Requires macOS 14 or newer; Intel Macs are not supported. The app has an ad-hoc signature and is not notarized.
+| Your computer | Download |
+| --- | --- |
+| Windows 10 or 11 | [**AFM-Workbench-Windows.exe**](https://github.com/panmx-phys/2D-AFM-bench/releases/latest/download/AFM-Workbench-Windows.exe) |
+| Mac with an Apple chip (M1 or later), macOS 14 or newer | [**AFM-Workbench-Mac.app.tar.gz**](https://github.com/panmx-phys/2D-AFM-bench/releases/latest/download/AFM-Workbench-Mac.app.tar.gz) |
+
+No GitHub account, installer or Python is needed. The apps are experimental and not yet signed by Microsoft or Apple, so the first start shows a warning. The **[installation guide](docs/install.md)** walks through opening the app, finding your data and updating. The [latest release page](https://github.com/panmx-phys/2D-AFM-bench/releases/latest) lists changes and developer files.
+
+- **Windows x64:** a single portable `.exe`; Python and the scientific libraries are embedded. Requires Microsoft Edge WebView2 Runtime and .NET Framework 4.8. The executable is unsigned.
+- **Apple Silicon Mac:** the archive contains only **AFM Workbench.app**. Intel Macs are not supported. The app has an ad-hoc signature and is not notarized.
 
 These apps run locally and offline. Windows expands its embedded runtime to the user's temporary directory at startup. Catalogs and imported data stay in the user's application-data directory; use `--data-dir PATH` to choose another location, including a folder on a portable drive. Matching source archives and build records are separate downloads linked in the release notes. Clean-machine startup remains unverified; Windows or macOS may warn about the unsigned/unnotarized app. See [validation](docs/validation.md) and the [Windows build recipe](docs/publishing.md#windows-x64-candidate).
 

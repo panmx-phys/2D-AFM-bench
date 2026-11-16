@@ -141,6 +141,8 @@ Developer ID signing, notarization and clean-Mac installation acceptance.
 Run all active checks against the rebuilt executable and record the remaining
 limitations prominently in the public notes. Keep the default tag workflow's
 draft behavior; publication of this candidate is a deliberate maintainer action.
+On 2026-11-15 the combined 0.1.0 release was marked GitHub **Latest**, so that the
+permanent download links work. It stays titled and described as experimental.
 This exception does not certify a stable release, Intel Mac or Windows support.
 
 ## Windows x64 candidate
@@ -195,13 +197,50 @@ assets are never overwritten. Unsigned candidates remain drafts pending clean
 machine installation, physical File Explorer drop testing and signing. Creating
 the workflow is not evidence that GitHub Actions ran it.
 
-For the combined portable prerelease, keep exactly two application attachments:
-the Windows EXE and a Mac `.app.tar.gz` containing only `AFM Workbench.app`.
-A `.app` is a directory bundle, so GitHub needs an archive to preserve its files,
-permissions and symlinks. Publish the complete matching source archives and build
-records separately and link them directly from the application release notes.
-Keep each platform's source revision explicit when reusing an existing Mac app;
-never move a published tag to make different builds appear to share a revision.
+## Public app release
+
+Lab members without GitHub experience download from one combined release per
+version, tagged `vX.Y.Z`. Platform-specific drafts (`windows-vX.Y.Z` and the Mac
+workflow's draft) are staging only; do not publish them separately, because
+GitHub's **Latest** badge and the permanent download links must point at the
+release that holds both apps.
+
+After the acceptance gates for the release are met, assemble it with the
+[publish script](../scripts/publish_release.py):
+
+```sh
+python scripts/publish_release.py --tag vX.Y.Z \
+  --windows dist/release-windows/AFM-Workbench-vX.Y.Z-windows-x64.exe \
+  --mac AFM-Workbench-vX.Y.Z-Mac-arm64.app.tar.gz \
+  --details technical-notes.md \
+  --developer-file dist/release/AFM-Workbench-vX.Y.Z-source.tar.gz
+```
+
+It requires the tag to match the application version and the Mac archive to contain
+only `AFM Workbench.app`; a `.app` is a directory bundle, so GitHub needs an archive
+to preserve its files, permissions and symlinks. The apps are attached as
+`AFM-Workbench-Windows.exe` and `AFM-Workbench-Mac.app.tar.gz`. These names
+never change, so `https://github.com/panmx-phys/2D-AFM-bench/releases/latest/download/<name>`
+(used by the [README](../README.md#download) and [installation guide](install.md))
+always serves the newest published version. The file contents and checksums are
+unchanged; the technical record maps the build outputs to these public names.
+
+The [notes template](../release/notes-template.md) leads with a download table and
+first-start steps for SmartScreen and Gatekeeper. The `--details` Markdown supplies
+the checks, revisions, limitations and source links, which appear in a collapsed
+section with the app checksums. Keep each platform's source revision explicit when
+reusing an existing build, and never move a published tag so that different builds
+appear to share a revision. `--notes-only FILE` renders the notes without uploading.
+`--dry-run` prints the `gh` commands.
+
+Without `--publish`, the script creates a draft. `--publish` makes the release
+public, clears the GitHub prerelease flag and marks it **Latest**: GitHub excludes
+prereleases from `releases/latest`. The title remains `AFM Workbench X.Y.Z
+(experimental)` and the notes state the signing limitations until a release is
+signed and accepted. Assets already on a release are never replaced. Attach source
+archives and build records to the same release with `--developer-file`, so that
+each version lives in one place. Version 0.1.0 predates this and keeps them in the
+separate `sources` release.
 
 ## Other desktop/development builds
 

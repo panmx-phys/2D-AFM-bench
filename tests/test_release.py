@@ -10,7 +10,7 @@ import unittest
 from contextlib import ExitStack
 from unittest.mock import patch
 
-from scripts import build_gwyddion, release_macos, release_windows, source_release
+from scripts import build_gwyddion, publish_release, release_macos, release_windows, source_release
 from scripts import test as runner
 
 
@@ -205,6 +205,70 @@ class ReleaseTests(unittest.TestCase):
                     'binary:\n\t/opt/homebrew/lib/libforeign.dylib (compatibility version 1.0)'):
                 with self.assertRaisesRegex(RuntimeError, 'External library'):
                     release_macos.inspect_bundle(app)
+
+
+class PublishReleaseTests(unittest.TestCase):
+    """The public app release keeps version-free names and plain first-start notes."""
+
+    def apps(self, folder, extra=None):
+        folder = Path(folder)
+        exe = folder / 'AFM-Workbench-v9.9.9-windows-x64.exe'
+        exe.write_bytes(b'MZ' + bytes(1000))
+        bundle = folder / 'AFM Workbench.app' / 'Contents'
+        bundle.mkdir(parents=True)
+        (bundle / 'Info.plist').write_text('plist')
+        mac = folder / 'mac.tar.gz'
+        with tarfile.open(mac, 'w:gz') as archive:
+            archive.add(folder / 'AFM Workbench.app', 'AFM Workbench.app')
+            if extra:
+                archive.add(exe, extra)
+        return exe, mac
+
+    def test_apps_are_staged_under_version_free_names(self):
+        with tempfile.TemporaryDirectory() as folder, tempfile.TemporaryDirectory() as stage:
+            exe, mac = self.apps(folder)
+            staged = publish_release.stage_apps(exe, mac, stage)
+            self.assertEqual(sorted(p.name for p in staged.values()),
+                             ['AFM-Workbench-Mac.app.tar.gz', 'AFM-Workbench-Windows.exe'])
+            self.assertEqual(staged['AFM-Workbench-Windows.exe'].read_bytes(), exe.read_bytes())
+
+    def test_mac_archive_must_contain_only_the_app(self):
+        with tempfile.TemporaryDirectory() as folder, tempfile.TemporaryDirectory() as stage:
+            exe, mac = self.apps(folder, extra='stray.exe')
+            with self.assertRaisesRegex(ValueError, 'only'):
+                publish_release.stage_apps(exe, mac, stage)
+            with self.assertRaisesRegex(ValueError, '.exe'):
+                publish_release.stage_apps(mac, mac, stage)
+
+    def test_notes_link_the_tag_and_collapse_technical_details(self):
+        with tempfile.TemporaryDirectory() as folder, tempfile.TemporaryDirectory() as stage:
+            staged = publish_release.stage_apps(*self.apps(folder), stage)
+            notes = publish_release.render_notes('lab/afm', 'v9.9.9', staged, 'Checks {passed}: 3')
+        self.assertTrue(notes.startswith('## Download'))
+        self.assertIn('https://github.com/lab/afm/releases/download/v9.9.9/AFM-Workbench-Windows.exe', notes)
+        self.assertIn('https://github.com/lab/afm/releases/latest', notes)
+        self.assertLess(notes.index('### Windows: first start'), notes.index('<details>'))
+        self.assertLess(notes.index('<details>'), notes.index('Checks {passed}: 3'))
+        self.assertRegex(notes, r'[0-9a-f]{64}  AFM-Workbench-Mac\.app\.tar\.gz')
+        self.assertIn('0.0 MB', notes)
+
+    def test_publish_marks_latest_and_never_clobbers(self):
+        notes, files = Path('notes.md'), [Path('a.exe')]
+        draft = publish_release.gh_commands('v1.0.0', '1.0.0', notes, files, False, False)
+        self.assertIn('--draft', draft[0])
+        self.assertNotIn('--latest', draft[0])
+        new = publish_release.gh_commands('v1.0.0', '1.0.0', notes, files, False, True)
+        self.assertIn('--latest', new[0])
+        update = publish_release.gh_commands('v1.0.0', '1.0.0', notes, files, True, True)
+        self.assertEqual(update[0][:4], ['gh', 'release', 'upload', 'v1.0.0'])
+        self.assertIn('--prerelease=false', update[1])
+        self.assertIn('AFM Workbench 1.0.0 (experimental)', update[1])
+        self.assertFalse(any('--clobber' in command for command in draft + new + update))
+
+    def test_tag_must_match_application_version(self):
+        with patch.object(publish_release, 'version', return_value='1.0.0'):
+            with self.assertRaisesRegex(SystemExit, 'does not match'):
+                publish_release.main(['--tag', 'v2.0.0', '--windows', 'a.exe', '--mac', 'b.tar.gz', '--repo', 'x/y'])
 
 
 if __name__ == '__main__':

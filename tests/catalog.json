@@ -202,6 +202,7 @@
         "AFM-Workbench.spec",
         "licenses/python-fallbacks/*",
         "scripts/release_macos.py",
+        "scripts/publish_release.py",
         "release/*",
         ".github/workflows/release.yml",
         "scripts/collect_native_sources.py",
